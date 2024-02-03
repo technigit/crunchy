@@ -1,0 +1,2 @@
+&print let's try a nested read
+&read readfile.nested

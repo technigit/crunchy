@@ -1,0 +1,7 @@
+&print let's &goto a tag that does not exist
+&goto missingtag:
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up

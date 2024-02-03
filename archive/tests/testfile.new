@@ -1,0 +1,12 @@
+&print let's read from a file that does not exist
+&read this_file_does_not_exist
+&print let's try a nested read
+&read readfile.nested
+&print let's try an alternate nested read
+&cd alt
+&read readfile.nested
+&print let's read from an alternate file that does not exist
+&read this_file_does_not_exist
+&cd
+&print let's try the first nested read again
+&read readfile.nested

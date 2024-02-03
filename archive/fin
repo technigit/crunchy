@@ -1,0 +1,391 @@
+#!/usr/bin/perl
+
+######################################################################
+# mofi
+#      aka money financial
+######################################################################
+
+# TODO: deprecate
+$fulbal  = 0;
+$clrbal  = 0;
+
+$comment_ = 0;
+$delim_   = "~";
+$output_  = 1;
+$infomsg_ = 1;
+
+######################################################################
+
+while (<>)
+   {
+   $in_ = $_;
+   &parseline() if !&skipline();
+   }
+
+######################################################################
+
+#for ($i=0;$i<@totals_;$i++)
+#   {
+#   print $totals_[$i] . " ";
+#   }
+#print "\n";
+
+######################################################################
+
+sub skipline
+   {
+   local($result = 0);
+   $comment_ = 0 if $comment_ eq -1;
+   $in_ =~ s/[\n\r]//g;
+   $comment_ = 1 if $in_ =~ /^\s*\/\*/;
+   $comment_ = -1 if $in_ =~ /\*\/\s*$/;
+   $result = 1 if $in_ =~ /^\s*\#/;
+   $result = 1 if $in_ =~ /^\s*\/\//;
+   $result = 1 if $in_ =~ /^[\s-]*$/;
+   $result = 1 if $comment_;
+   $result = 1 if $in_ =~ /^\s*\S*\:\s*$/;
+   return $result;
+   }
+
+######################################################################
+
+sub parseline
+   {
+   if ($in_ =~ /^\s*&/)
+      {
+      &parsedirective();
+      }
+   else
+      {
+      local($out,$align,$i,$m);
+      @elts_ = &getelts($in_);
+      @hdrs_ = &makeheaders() if (!@hdrs_);
+      $out = "";
+      for ($i=0;$i<@elts_;$i++)
+         {
+$totals_[$i] += $elts_[$i];
+         $m = $i;
+         $m = $map_[$i] - 1 if $map_[$i];
+         if ($hdrs_[$m] !~ /^\#/)
+            {
+            $align = $justify_[$m];
+            $out .= &ljustify($elts_[$m],$width_[$m]) . " " if $align eq "<";
+            $out .= &cjustify($elts_[$m],$width_[$m]) . " " if $align eq "|";
+            $out .= &rjustify($elts_[$m],$width_[$m]) . " " if $align eq ">";
+            }
+         }
+# TODO: deprecate
+      $payamt = $elts_[$decfield];
+      $payamt =~ s/[^\d\.-]//g;
+      $depamt = $elts_[$incfield];
+      $depamt =~ s/[^\d\.-]//g;
+      $fulbal -= $payamt;
+      $fulbal += $depamt;
+      if ($elts_[$clrfield] ne " ")
+         {
+         $clrbal -= $payamt;
+         $clrbal += $depamt;
+         }
+#$category = substr($elts_[$catfield],0,4);
+#$category =~ tr/A-Z/a-z/;
+#$category =~ s/\s//g;
+#$out .= " " . $cat{$category};
+
+      printf "%s %8.2f (%8.2f)\n",$out,$fulbal,$clrbal if $output_;
+      }
+   }
+
+######################################################################
+
+sub printheader
+   {
+# TODO: finish &printheader
+   }
+
+######################################################################
+
+sub parsedirective
+   {
+   $in_ =~ s/^\s*(\S.*)$/$1/;
+
+   local($cmd,$arg,$argtrim);
+   $cmd = $in_;
+   $arg = $in_;
+   $cmd =~ s/^(\S*)\s.*$/$1/;
+   $arg =~ s/^\S*\s(.*)$/$1/;
+   $arg = "" if $arg eq $cmd;
+   $argtrim = $arg;
+   $argtrim =~ s/^\s*//;
+   $argtrim =~ s/\s*$//;
+
+# TODO: compare against $cmd instead of $in_
+
+   #################### &goto
+   #
+   if ($in_ =~ /^&goto /i)
+      {
+      local($found);
+      &infomsg("Skipping to \'$argtrim\'.");
+      $found = 0;
+      while (<>)
+         {
+         if ($_ =~ /^\s*$argtrim\:[\s\n\r]*$/)
+            {
+            $found = 1;
+            last;
+            }
+         }
+      if (!$found)
+         {
+         &errmsg("EOF reached before tag \'$argtrim\'.");
+         exit 1;
+         }
+      }
+
+   #################### &header
+   #
+   elsif ($in_ =~ /^&header$/i)
+      {
+      &printheader();
+      }
+
+   #################### &init
+   #
+   elsif (($in_ =~ /^&init$/i) || ($in_ =~ /^&init /i))
+      {
+# TODO: deprecate
+      $fulbal = $arg;
+      $clrbal = $arg;
+      @totals_ = ();
+      printf "* Balance set to: %8.2f\n",$arg if $infomsg_;
+      }
+
+   #################### &map
+   #
+   elsif ($in_ =~ /^&map /i)
+      {
+      local(@premap);
+      @premap = getelts($arg);
+      @map_ = ();
+      for ($m=0;$m<@premap;$m++)
+         {
+         $map_[$premap[$m] - 1] = $m + 1;
+         }
+      &infomsg("Columns were remapped.");
+      }
+
+   #################### &output
+   #
+   elsif ($in_ =~ /^&output /i)
+      {
+      if ($in_ =~ /^&output off$/i)
+         {
+         &infomsg("Output mode is off.");
+         $output_ = 0;
+         }
+      if ($in_ =~ /^&output on$/i)
+         {
+         $output_ = 1;
+         &infomsg("Output mode is on.");
+         }
+      }
+
+   #################### &perl
+   #
+   elsif (($in_ =~ /^&perl$/i) || ($in_ =~ /^&perl /i))
+      {
+      local($result,$errmsg);
+      &infomsg("Executing perl command \'$arg\'.");
+      $result = eval $arg;
+      $errmsg = $@;
+      $errmsg =~ s/[\n\r]//g;
+      &errmsg("Perl: $errmsg") if !$result;
+      }
+
+   #################### &print
+   #
+   elsif (($in_ =~ /^&print$/i) || ($in_ =~ /^&print /i))
+      {
+      print "$arg\n" if $output_;
+      }
+
+   #################### &read
+   #
+   elsif ($in_ =~ /^&read/i)
+      {
+      local($ul);
+      &infomsg("Reading file $arg.");
+      open (READFILE,$arg);
+      while (<READFILE>)
+         {
+         $in_ = $_;
+         if ($in_ =~ /^\s*&read/i)
+            {
+            $in_ =~ s/[\n\r]//g;
+            $ul = $in_;
+            $ul =~ s/&read.*$/^^^^^/;
+            &errmsg($in_);
+            &errmsg($ul);
+            &errmsg("Recursive &read not allowed.");
+            next;
+            }
+         &parseline() if !&skipline();
+         }
+      close (READFILE);
+      &infomsg("Finished reading file $arg.");
+      }
+
+   #################### &set
+   #
+# TODO: deprecate catfield, clrfield, decfield
+   elsif ($in_ =~ /^&set /i)
+      {
+      local($attr,$val);
+      ($cmd,$attr,$val) = split(/\s/,$in_);
+# TODO: allow listing of attribute assignments
+#if ($attr eq "")
+#   {
+#   }
+      if ($attr eq "catfield")
+         {
+         $catfield = $val;
+         }
+      elsif ($attr eq "clrfield")
+         {
+         $clrfield = $val;
+         }
+      elsif ($attr eq "decfield")
+         {
+         $decfield = $val;
+         }
+      elsif ($attr eq "incfield")
+         {
+         $incfield = $val;
+         }
+      }
+
+   #################### &stop
+   #
+   elsif ($in_ =~ /^&stop$/i)
+      {
+      last;
+      }
+
+   #################### &infomsg
+   #
+   elsif ($in_ =~ /^&infomsg /i)
+      {
+      $infomsg_ = 0 if $in_ =~ /^&infomsg off$/i;
+      $infomsg_ = 1 if $in_ =~ /^&infomsg on$/i;
+      &infomsg("Infomsg mode is on.") if $infomsg_;
+      }
+
+   #################### unknown directive
+   #
+   else
+      {
+      &errmsg("Unknown directive: $in_");
+      }
+   }
+
+######################################################################
+######################################################################
+######################################################################
+
+sub makeheaders
+   {
+   local($i,$g);
+   $g = 0;
+   for ($i=0;$i<@elts_;$i++)
+      {
+      $width_[$i] = $elts_[$i];
+      $width_[$i] =~ s/^.*\D(\d*)$/$1/;
+      $elts_[$i] =~ s/^(.*\D)\d*$/$1/;
+      $justify_[$i] = ">";
+      $justify_[$i] = "<" if $elts_[$i] =~ /\<$/;
+      $justify_[$i] = "|" if $elts_[$i] =~ /\|$/;
+      $elts_[$i] =~ s/[\<\|\>]$//;
+      $g = length($elts_[$i]) if (length($elts_[$i]) > $g);
+      }
+   @elts_;
+   }
+
+######################################################################
+
+sub getelts
+   {
+   local($i,@elts);
+   local($line = $_[0]);
+   $line =~ s/^\s*//;
+   $line =~ s/\s\s(\s*)/$delim_/g;
+   @elts = split(/$delim_/,$line);
+   for ($i=0;$i<@elts;$i++)
+      {
+      $elts[$i] = " " if $elts[$i] eq "-";
+      }
+   @elts;
+   }
+
+######################################################################
+
+sub ljustify 
+   {
+   local($i,$str);
+   $str = $_[0];
+   $width_ = $_[1];
+   for($i=length($str);$i<$width_;$i++)
+      {
+      $str = $str . " ";
+      }
+   $str = substr($str,0,$width_) if $width_ > 0;
+   $str;
+   }
+
+######################################################################
+
+sub cjustify 
+   {
+   local($i,$str);
+   $str = $_[0];
+   $width_ = $_[1];
+   $str = substr($str,0,$width_) if $width_ > 0;
+   while (length($str) < $width_)
+      {
+      $str .= " ";
+      $str = " " . $str if length($str) < $width_;
+      }
+   $str;
+   }
+
+######################################################################
+
+sub rjustify 
+   {
+   local($i,$str);
+   $str = $_[0];
+   $width_ = $_[1];
+   for($i=length($str);$i<$width_;$i++)
+      {
+      $str = " " . $str;
+      }
+   $str = substr($str,0,$width_) if $width_ > 0;
+   $str;
+   }
+
+######################################################################
+
+sub errmsg
+   {
+   print STDERR "<E> $_[0]\n";
+   }
+
+######################################################################
+
+sub infomsg
+   {
+   print "<i> $_[0]\n" if $infomsg_ && $output_;
+   }
+
+######################################################################
+
+# EOF

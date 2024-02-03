@@ -1,0 +1,37 @@
+THIS_MONTH=`date +%Y%m`
+NEXT_MONTH=`date -v28d -v+4d +%Y%m`
+PREV_MONTH=`date -v1d -v-1d +%Y%m`
+
+alias finv="vi $THIS_MONTH -S ~/.fin.vim"
+alias fina="fin ~/data/$THIS_MONTH-bankaccta.dat"
+alias finb="fin ~/data/$THIS_MONTH-bankacctb.dat"
+alias finab="fin ~/data/$THIS_MONTH.dat"
+
+alias finvn="vi $NEXT_MONTH -S ~/.fin.vim"
+alias finan="fin ~/data/$NEXT_MONTH-bankaccta.dat"
+alias finbn="fin ~/data/$NEXT_MONTH-bankacctb.dat"
+alias finabn="fin ~/data/$NEXT_MONTH.dat"
+
+alias finvp="vi $PREV_MONTH -S ~/.fin.vim"
+alias finap="fin ~/data/$PREV_MONTH-bankaccta.dat"
+alias finbp="fin ~/data/$PREV_MONTH-bankacctb.dat"
+alias finabp="fin ~/data/$PREV_MONTH.dat"
+
+alias finl="sed /PENDING/q | tail -3 | head -1 | cut -c 62-"
+alias ckfin="fina | finl; finb | finl; echo "--------------------"; finab | finl"
+
+finvm() { vi $1 -S ~/.fin.vim }
+finam() { fin ~/data/$1-bankaccta.dat }
+finbm() { fin ~/data/$1-bankacctb.dat }
+finabm() { fin ~/data/$1.dat }
+
+alias finget="rsync -ar --exclude '*.swp' andy@othermac:data/ ~/data"
+alias finput="rsync -ar --exclude '*.swp' ~/data/ andy@othermac:data"
+fincmp() {
+   rsync -airvnc --update --delete --exclude '*.swp' andy@othermac:data/ ~/data \
+   | sed -e '/^sent.*$/d' -e '/^total.*$/d' -e '/^.* \.\/$/d' -e '/^.* done$/d' -e '/^$/d' \
+         -e 's/^<fc.t..../   put/' -e 's/^>fc.t..../get   /' -e 's/^.f..t..../  ==  /'
+   rsync -airvnc --update --delete --exclude '*.swp' ~/data/ andy@othermac:data \
+   | sed -e '/^sent.*$/d' -e '/^total.*$/d' -e '/^.* \.\/$/d' -e '/^.* done$/d' -e '/^$/d' \
+         -e 's/^<fc.t..../   put/' -e 's/^>fc.t..../get   /' -e 's/^.f..t..../  ==  /'
+}

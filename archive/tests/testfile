@@ -1,0 +1,51 @@
+&print this is a test
+&print yay
+#
+# comment
+   # comment
+//
+// comment
+   // comment
+comment:
+   comment:
+:
+   :
+/* this is
+a multi-line
+comment */
+   /* this is also
+   a multi-line
+   comment
+*/
+   /*
+yet another
+multi-line
+comment
+   */
+&print did it work?
+&invalid command
+&output off
+&print this line should not show up
+&output on
+&print this line should show up
+&print turning output off and back on with infomsg turned off
+&infomsg off
+&output off
+&output on
+&print turning output off and back on with infomsg turned on
+&infomsg on
+&output off
+&output on
+&print let's skip some lines with a goto
+&goto skip
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up
+&print this line should not show up
+skip:
+&print this line should show up
+&print let's read from another file
+&read readfile
+&stop
+&print this line should not show up
