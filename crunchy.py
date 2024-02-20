@@ -1,4 +1,4 @@
-#!/usr/local/bin/python3
+#!/usr/bin/env python3
 
 '''
  * Copyright (c) 2000, 2022, 2023 Andy Warmack
@@ -30,6 +30,8 @@ test_pause_ = False
 test_verbose_ = False
 test_pass_ = 0
 test_fail_ = 0
+test_force_quiet_ = False
+test_force_verbose_ = False
 
 fulbal_ = 0.0
 clrbal_ = 0.0
@@ -138,14 +140,15 @@ def testMessage(message, verbose = False):
 
 def testStop(verbose = False):
     global testing_, test_filename_, test_f_, test_pause_, test_pass_, test_fail_
-    test_filename_ = ''
     testing_ = False
     test_pause_ = False
     if test_f_ != None: test_f_.close()
+    test_f_ = None
     testMessage('Test stopped.', verbose)
     total = test_pass_ + test_fail_
     s = 's' if total != 1 else ''
-    testMessage(str(test_pass_ + test_fail_) + ' line' + s + ' tested: ' + str(test_pass_) + ' passed, ' + str(test_fail_) + ' failed', True)
+    testMessage(str(test_pass_ + test_fail_) + ' line' + s + ' tested: ' + str(test_pass_) + ' passed, ' + str(test_fail_) + ' failed :: ' + test_filename_, True)
+    test_filename_ = ''
 
 ################################################################################
 
@@ -194,7 +197,8 @@ def debugList(listname, list = []):
 
 def parseDirective(line):
     global running_, infomsg_, output_, goto_, max_read_depth_, read_path_
-    global testing_, test_filename_, test_pause, test_verbose_
+    global testing_, test_filename_, test_pause, test_verbose_, test_pass_, test_fail_
+    global test_force_quiet_, test_force_verbose_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
     argtrim = ''
     arg = None
@@ -314,6 +318,8 @@ def parseDirective(line):
                     test_filename_ = m.group(1)
                     testing_ = True
                     test_pause_ = False
+                    test_pass_ = 0
+                    test_fail_ = 0
                     testMessage('Test started with \'' + test_filename_ + '\'')
                 else:
                     testMessage('Test filename not specified.')
@@ -332,15 +338,17 @@ def parseDirective(line):
             else:
                 testMessage('No test is currently running.')
         elif argtrim == 'verbose':
-            test_verbose_ = True
-            testMessage('Test mode set to verbose.')
+            if not test_force_quiet_:
+                test_verbose_ = True
+                testMessage('Test mode set to verbose.')
         elif argtrim == 'quiet':
-            test_verbose_ = False
-            testMessage('Test mode set to quiet.')
+            if not test_force_verbose_:
+                test_verbose_ = False
+                testMessage('Test mode set to quiet.')
         elif argtrim == 'stop':
             testStop()
         else:
-            test(cmd + ': invalid parameter.')
+            testMessage(cmd + ': invalid parameter.')
 
     ####################
 
@@ -354,6 +362,27 @@ def parseDirective(line):
 
     else:
         errorMessage('Invalid directive: ' + line)
+
+################################################################################
+
+def parseOptions():
+    global test_force_quiet_, test_force_verbose_
+    if len(sys.argv) == 1:
+        return
+    input_files = []
+    for i, option in enumerate(sys.argv):
+        if option.startswith('-'):
+            if option in ['-tv', '--test-verbose']:
+                parseDirective('&test verbose')
+            elif option in ['-tfv', '--test-force-verbose']:
+                test_force_verbose_ = True
+                parseDirective('&test verbose')
+            elif option in ['-tfq', '--test-force-quiet']:
+                test_force_quiet_ = True
+                parseDirective('&test quiet')
+        elif i > 0:
+            input_files.append(option)
+    return input_files
 
 ################################################################################
 
@@ -410,20 +439,24 @@ def parseLine(line):
 # show information when starting in interactive mode
 show_info()
 
+# process command-line options
+filenames = parseOptions()
+
 try:
 
     # main parsing loop
-    for line in fileinput.input():
-        line = re.sub('\n', '', line)
-        if not skipLine(line): parseLine(line)
-        if not running_: break
+    with fileinput.FileInput(files=(filenames), mode='r') as input:
+        for line in input:
+            line = re.sub('\n', '', line)
+            if not skipLine(line): parseLine(line)
+            if not running_: break
 
-except FileNotFoundError:
-    errorMessage('Input file not found.')
+except FileNotFoundError as e:
+    errorMessage('Input file not found: ' + e.filename)
 except ValueError:
     errorMessage('Invalid input: ' + line)
 except:
-    errorMessage('Unexpected error: ' + line)
+    errorMessage('Unexpected error.')
     traceback.print_exc()
 finally:
     fileinput.close()
