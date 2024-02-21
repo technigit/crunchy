@@ -15,43 +15,54 @@ from os.path import exists
 # global variables
 ####################
 
-running_ = True
-comment_mode_ = 0
-infomsg_ = True
-output_ = True
-goto_ = ''
 max_read_depth_ = 5
-read_path_ = ''
 
-testing_ = False
-test_filename_ = None
-test_f_ = None
-test_pause_ = False
-test_verbose_ = False
-test_pass_ = 0
-test_fail_ = 0
+ignore_stop_ = False
+ignore_stop_reset_ = False
+skip_testing_ = False
 test_force_quiet_ = False
 test_force_verbose_ = False
 
-fulbal_ = 0.0
-clrbal_ = 0.0
-catfield_ = None
-clrfield_ = None
-incfield_ = None
-decfield_ = None
+def initGlobals():
+    global running_, comment_mode_, infomsg_, output_, goto_, read_path_
+    global testing_, test_filename_, test_f_, test_pause_, test_verbose_, test_pass_, test_fail_
+    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
+    global elements_, headers_, justify_, width_, map_
 
-elements_ = None
-headers_ = None
-justify_ = None
-width_ = None
-map_ = None
+    running_ = True
+    comment_mode_ = 0
+    infomsg_ = True
+    output_ = True
+    goto_ = None
+    read_path_ = None
+
+    testing_ = False
+    test_filename_ = None
+    test_f_ = None
+    test_pause_ = False
+    test_verbose_ = False
+    test_pass_ = 0
+    test_fail_ = 0
+
+    fulbal_ = 0.0
+    clrbal_ = 0.0
+    catfield_ = None
+    clrfield_ = None
+    incfield_ = None
+    decfield_ = None
+
+    elements_ = None
+    headers_ = None
+    justify_ = None
+    width_ = None
+    map_ = None
 
 ####################
 # functions
 ####################
 
 def show_info(should_show = False):
-    if should_show or len(sys.argv) == 1:
+    if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
         printLine("""
 Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
 """)
@@ -70,7 +81,7 @@ def skipLine(line):
     m = re.search('^\s*(\S*)\:\s*$', line)
     if m:
         if m.group(1) == goto_:
-            goto_ = ''
+            goto_ = None
         return True
     if goto_: return True
     return False
@@ -83,14 +94,18 @@ def makeHeaders():
     justify_ = [None] * len(elements_)
     for i, element in enumerate(elements_):
         element = element.strip()
-        width_[i] = int(re.search('^.*\D(\d*)$', element).group(1))
-        element = re.search('^(.*\D)\d*$', element).group(1)
-        justify_[i] = '>'
-        if re.search('\<$', element):
-            justify_[i] = '<'
-        if re.search('\|$', element):
-            justify_[i] = '|'
-        elements_[i] = re.sub('[\<\|\>]$', '', element)
+        m = re.search('^.*\D(\d*)$', element)
+        if m:
+            width_[i] = int(m.group(1))
+            element = re.search('^(.*\D)\d*$', element).group(1)
+            justify_[i] = '>'
+            if re.search('\<$', element):
+                justify_[i] = '<'
+            if re.search('\|$', element):
+                justify_[i] = '|'
+            elements_[i] = re.sub('[\<\|\>]$', '', element)
+        else:
+            return None
     return elements_
 
 ####################
@@ -198,7 +213,7 @@ def debugList(listname, list = []):
 def parseDirective(line):
     global running_, infomsg_, output_, goto_, max_read_depth_, read_path_
     global testing_, test_filename_, test_pause, test_verbose_, test_pass_, test_fail_
-    global test_force_quiet_, test_force_verbose_
+    global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
     argtrim = ''
     arg = None
@@ -304,13 +319,20 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'stop':
-        running_ = False
+        if not ignore_stop_:
+            running_ = False
+        if ignore_stop_reset_:
+            if testing_:
+                testStop()
+            initGlobals()
 
     ####################
 
+    elif cmd == 'test' and skip_testing_:
+        pass
     elif cmd == 'test':
         if argtrim == None:
-            test(cmd + ': parameters required.')
+            testMessage(cmd + ': parameters required.')
         elif argtrim.startswith('start'):
             if not testing_:
                 m = re.search('^start\s+(\S*)$', argtrim)
@@ -366,13 +388,20 @@ def parseDirective(line):
 ################################################################################
 
 def parseOptions():
-    global test_force_quiet_, test_force_verbose_
+    global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     if len(sys.argv) == 1:
         return
     input_files = []
     for i, option in enumerate(sys.argv):
         if option.startswith('-'):
-            if option in ['-tv', '--test-verbose']:
+            if option in ['-is', '--ignore-stop']:
+                ignore_stop_ = True
+            elif option in ['-isr', '--ignore-stop-reset']:
+                ignore_stop_ = True
+                ignore_stop_reset_ = True
+            elif option in ['-st', '--skip-testing']:
+                skip_testing_ = True
+            elif option in ['-tv', '--test-verbose']:
                 parseDirective('&test verbose')
             elif option in ['-tfv', '--test-force-verbose']:
                 test_force_verbose_ = True
@@ -387,6 +416,7 @@ def parseOptions():
 ################################################################################
 
 def parseLine(line):
+    global running_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
     global elements_, headers_
     if re.search('^\s*&', line):
@@ -395,6 +425,10 @@ def parseLine(line):
         elements_ = getElements(line)
         if headers_ == None:
             headers_ = makeHeaders()
+        if headers_ == None:
+            errorMessage('Invalid header configuration: ' + line)
+            running_ = False
+            return
         out = ''
         for i, element in enumerate(elements_):
             m = i
@@ -435,6 +469,8 @@ def parseLine(line):
 ####################
 # start here
 ####################
+
+initGlobals()
 
 # show information when starting in interactive mode
 show_info()
