@@ -1,0 +1,88 @@
+--
+Help Topic: Data Format
+
+   The first non-directive line specifies the header, and subsequent non-directive lines feed the data.  Directives add more information about how the data is to be crunched.
+
+   Minimal example:
+
+      &init 2013.12
+      &set decfield 2
+      &set clrfield 3
+      &set incfield 4
+      Check|5     Date|10   Payment8  Clear1   Deposit8  Description<22
+            -  11/01/2023      10.45       *          -  Wordpress hosting
+            -  11/01/2023      48.77       *          -  Torchy's
+            -  11/01/2023          -       *    1500.00  paycheck
+            -  11/01/2023     745.00       -          -  apartment
+
+   Header:
+
+      <field name>[<alignment>]<width> ...
+
+      The header line specifies each field's name, width, and format.  The field descriptors must be separated by at least two spaces.
+
+      Example of a header line:
+
+         Check|5  Date|10  Payment8  Clear1  Deposit8  Description<22
+
+      Examples of field descriptors:
+
+         Check|5
+
+            The field label is "Check," the width is 5, and field data is centered.
+
+         Payment8
+
+            By default, the field data is right-justified.  Payment>8 would be the same.
+
+         Description<22
+
+            With the < symbol, the field data is left-justified.
+
+   Directives:
+
+      Directives are commands starting with an ampersand (&).
+
+      Examples:
+
+         &print [<text>]
+
+            Send some text to stdout.
+
+         &read <filename>
+
+            Read an external file.
+
+         &help [<topic>]
+
+            Display some help information.
+
+      See also:  &help directives
+
+   Labels:
+
+      <label>:
+
+      Labels can be specified to provide a target for the &goto directive.
+
+      Example:
+
+         &print This line should be displayed.
+         &goto skip
+         &print This line should not be displayed.
+         skip:
+         &print This line should be displayed.
+
+   Comments:
+
+      Comments can be written in the following ways:
+
+         # this is a comment
+
+         // this is a comment
+
+         /* this is
+         a multi-line
+         comment
+         */
+

@@ -8,8 +8,8 @@
  *
 '''
 
-import fileinput, re, sys, traceback
-from os.path import exists
+import fileinput, re, sys, textwrap, traceback
+from os.path import dirname, exists, realpath
 
 ####################
 # global variables
@@ -240,27 +240,46 @@ def parseDirective(line):
 
     elif cmd == 'goto':
         goto_ = argtrim
-        infoMessage('Skipping to \'' + goto_ + '\'.')
+        if argtrim:
+            infoMessage('Skipping to \'' + goto_ + '\'.')
+        else:
+            infoMessage('Usage: &goto <label>')
 
     ####################
 
-    elif cmd == 'header': pass
+    elif cmd == 'header':
+        global headers_
+        if headers_:
+            parseLine('  '.join(headers_))
+        else:
+            errorMessage('No header information found.')
+
+    ####################
+
+    elif cmd == 'help':
+        showHelp(argtrim)
 
     ####################
 
     elif cmd == 'init':
-        fulbal_ = float(argtrim)
-        clrbal_ = fulbal_
-        infoMessage('Initializing balance to {:.2f}'.format(fulbal_) + '.')
+        if argtrim:
+            fulbal_ = float(argtrim)
+            clrbal_ = fulbal_
+            infoMessage('Initializing balance to {:.2f}'.format(fulbal_) + '.')
+        else:
+            infoMessage('Usage: &init <float>')
 
     ####################
 
     elif cmd == 'map':
-        premap = getElements(argtrim)
-        map_ = [None] * len(premap)
-        for m, element in enumerate(premap):
-            map_[int(premap[m]) - 1] = m + 1
-        infoMessage('Fields were remapped.')
+        if argtrim:
+            premap = getElements(argtrim)
+            map_ = [None] * len(premap)
+            for m, element in enumerate(premap):
+                map_[int(premap[m]) - 1] = m + 1
+            infoMessage('Fields were remapped.')
+        else:
+            infoMessage('Usage: &map <headers>')
 
     ####################
 
@@ -270,6 +289,8 @@ def parseDirective(line):
     elif cmd == 'output' and arg == 'off':
         infoMessage('Output mode is off.')
         output_ = False
+    elif cmd =='output':
+        infoMessage('Usage: &output on|off')
 
     ####################
 
@@ -281,40 +302,55 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'read':
-        read_source = argtrim
-        if read_path_:
-            read_source = read_path_ + '/' + argtrim
-        if max_read_depth_ > 0:
-            max_read_depth_ = max_read_depth_ - 1
-            infoMessage('Reading file ' + read_source + '.')
-            if exists(read_source):
-                f = open(read_source, 'r')
-                for read_line in f:
-                    if not skipLine(read_line): parseLine(read_line)
-                f.close()
-                infoMessage('Finished reading file ' + read_source + '.')
+        if argtrim:
+            read_source = argtrim
+            if read_path_:
+                read_source = read_path_ + '/' + argtrim
+            if max_read_depth_ > 0:
+                max_read_depth_ = max_read_depth_ - 1
+                infoMessage('Reading file ' + read_source + '.')
+                if exists(read_source):
+                    f = open(read_source, 'r')
+                    for read_line in f:
+                        read_line = re.sub('\n', '', read_line)
+                        if not skipLine(read_line): parseLine(read_line)
+                    f.close()
+                    infoMessage('Finished reading file ' + read_source + '.')
+                else:
+                    errorMessage(cmd + ': File \'' + read_source + '\' does not exist.')
+                max_read_depth_ = max_read_depth_ + 1
             else:
-                errorMessage(cmd + ': File \'' + read_source + '\' does not exist.')
-            max_read_depth_ = max_read_depth_ + 1
+                errorMessage(cmd + ': Nested level too deep; will not read ' + read_source + '.')
         else:
-            errorMessage(cmd + ': Nested level too deep; will not read ' + read_source + '.')
+            infoMessage('Usage: &read <filename>')
 
     ####################
 
     elif cmd == 'set':
-        parts = argtrim.split(' ')
-        if (parts[0] == 'catfield'):
-            catfield_ = int(parts[1])
-            infoMessage('Setting category field to ' + str(catfield_) + '.')
-        elif (parts[0] == 'clrfield'):
-            clrfield_ = int(parts[1])
-            infoMessage('Setting clear field to ' + str(clrfield_) + '.')
-        elif (parts[0] == 'decfield'):
-            decfield_ = int(parts[1])
-            infoMessage('Setting decrement field to ' + str(decfield_) + '.')
-        elif (parts[0] == 'incfield'):
-            incfield_ = int(parts[1])
-            infoMessage('Setting increment field to ' + str(incfield_) + '.')
+        show_usage = False
+        if argtrim:
+            parts = argtrim.split(' ')
+            if len(parts) > 1:
+                if (parts[0] == 'catfield'):
+                    catfield_ = int(parts[1])
+                    infoMessage('Setting category field to ' + str(catfield_) + '.')
+                elif (parts[0] == 'clrfield'):
+                    clrfield_ = int(parts[1])
+                    infoMessage('Setting clear field to ' + str(clrfield_) + '.')
+                elif (parts[0] == 'decfield'):
+                    decfield_ = int(parts[1])
+                    infoMessage('Setting decrement field to ' + str(decfield_) + '.')
+                elif (parts[0] == 'incfield'):
+                    incfield_ = int(parts[1])
+                    infoMessage('Setting increment field to ' + str(incfield_) + '.')
+                else:
+                    show_usage = True
+            else:
+                show_usage = True
+        else:
+            show_usage = True
+        if show_usage:
+            infoMessage('Usage: &set catfield <int> | clrfield <int> | decfield <int> | incfield <int>')
 
     ####################
 
@@ -392,13 +428,23 @@ def parseOptions():
     if len(sys.argv) == 1:
         return
     input_files = []
+    skip = False
     for i, option in enumerate(sys.argv):
+        if skip:
+            skip = False
+            continue
         if option.startswith('-'):
             if option in ['-is', '--ignore-stop']:
                 ignore_stop_ = True
             elif option in ['-isr', '--ignore-stop-reset']:
                 ignore_stop_ = True
                 ignore_stop_reset_ = True
+            elif option in ['-h', '---help']:
+                topic = None
+                if i < len(sys.argv) - 1:
+                    topic = sys.argv[i+1]
+                    skip = True
+                showHelp(topic, True)
             elif option in ['-st', '--skip-testing']:
                 skip_testing_ = True
             elif option in ['-tv', '--test-verbose']:
@@ -409,6 +455,10 @@ def parseOptions():
             elif option in ['-tfq', '--test-force-quiet']:
                 test_force_quiet_ = True
                 parseDirective('&test quiet')
+            else:
+                errorMessage('Unknown option: ' + option)
+                printLine()
+                showHelp('usage', True)
         elif i > 0:
             input_files.append(option)
     return input_files
@@ -437,11 +487,11 @@ def parseLine(line):
             if not headers_[m].startswith('#'):
                 align = justify_[m]
                 if align == '<':
-                    out = out + ljustify(elements_[m], width_[m]) + ' '
+                    out += ljustify(elements_[m], width_[m]) + ' '
                 if align == '|':
-                    out = out + cjustify(elements_[m], width_[m]) + ' '
+                    out += cjustify(elements_[m], width_[m]) + ' '
                 if align == '>':
-                    out = out + rjustify(elements_[m], width_[m]) + ' '
+                    out += rjustify(elements_[m], width_[m]) + ' '
         payamt = 0.0
         depamt = 0.0
         if decfield_ != None:
@@ -459,12 +509,54 @@ def parseLine(line):
         else:
             errorMessage('Increment field is not set.')
         try:
-            fulbal_ = fulbal_ - float(payamt)
-            fulbal_ = fulbal_ + float(depamt)
+            fulbal_ -= float(payamt)
+            fulbal_ += float(depamt)
         except ValueError:
             pass
         if output_:
             printLine('{0} {1:8.2f} ({2:8.2f})'.format(out, fulbal_, clrbal_))
+
+################################################################################
+
+def processData():
+    global running_, testing_
+    try:
+        with fileinput.FileInput(files=(filenames), mode='r') as input:
+            for line in input:
+                line = re.sub('\n', '', line)
+                if not skipLine(line): parseLine(line)
+                if not running_: break
+    except FileNotFoundError as e:
+        errorMessage('Input file not found: ' + e.filename)
+    except ValueError:
+        errorMessage('Invalid input: ' + line)
+    except:
+        errorMessage('Unexpected error.')
+        traceback.print_exc()
+    finally:
+        fileinput.close()
+        if testing_:
+            testStop()
+
+################################################################################
+
+def showHelp(topic, stop_running = False):
+    global running_
+    helpfile = None
+    if not topic:
+        topic = 'usage'
+    try:
+        dir_path = dirname(realpath(__file__))
+        helpfile = open(dir_path + '/help/' + re.sub(' ', '-', topic).lower() + '.txt')
+        for line in helpfile:
+            print(textwrap.fill(line, 90))
+    except FileNotFoundError:
+        errorMessage('No help file for \'' + topic + '\' could be found.')
+    finally:
+        if helpfile:
+            helpfile.close()
+    if stop_running:
+        running_ = False
 
 ####################
 # start here
@@ -478,26 +570,9 @@ show_info()
 # process command-line options
 filenames = parseOptions()
 
-try:
-
-    # main parsing loop
-    with fileinput.FileInput(files=(filenames), mode='r') as input:
-        for line in input:
-            line = re.sub('\n', '', line)
-            if not skipLine(line): parseLine(line)
-            if not running_: break
-
-except FileNotFoundError as e:
-    errorMessage('Input file not found: ' + e.filename)
-except ValueError:
-    errorMessage('Invalid input: ' + line)
-except:
-    errorMessage('Unexpected error.')
-    traceback.print_exc()
-finally:
-    fileinput.close()
-    if testing_:
-        testStop()
+# main parsing loop
+if running_:
+    processData()
 
 if goto_:
     errorMessage('EOF reached before tag \'' + goto_ + '\'.')

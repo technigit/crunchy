@@ -1,0 +1,34 @@
+--
+Help Topic: &map
+
+   Usage: &map <descriptors>
+
+   Suppose we have our data formatted like this:
+
+      1234  11/01/2023      10.45       *          -  Wordpress hosting
+         -  11/01/2023      48.77       *          -  Torchy's
+      1235  11/01/2023     745.00       *          -  apartment
+
+   But we want the output to look more like this:
+
+      1234  11/01/2023 Wordpress hosting         10.45 *            2002.67 ( 2013.12)
+            11/01/2023 Torchy's                  48.77 *            1953.90 ( 2013.12)
+      1235  11/01/2023 apartment                745.00 *            1208.90 ( 2013.12)
+
+   The reason we might set it up this way is because it is easier to enter the description at the end of the line, while keeping the other fields visually aligned.  It is not strictly required to align the fields in this way, but in the long run, this is more maintainable.
+
+   So, suppose we want to set up the fields like this:
+
+      Check|5     Date|10   Payment8  Clear1   Deposit8  Description<22
+
+   There is more information about this at &help header, which describes how we set the field widths and such.  Here, Description will be truncated at 22 characters and left-justified.  In order to move this field so that it is displayed after the Date field, we could use the &map directive as follows:
+
+      &map 1  2  4  5  6  3
+
+   At first glance, this is not particularly intuitive, so for readability, we could enter it like this:
+
+      &map  1           2          4       5          6  3
+      Check|5     Date|10   Payment8  Clear1   Deposit8  Description<22
+
+   As long as there are at least two spaces between fields, these lines will be properly parsed.  By adding these extra spaces, we can start to understand what is happening.  This map directive is indicating that the Check field should appear first (1), the Date field should appear second (2), the Payment field should appear not third, but fourth (4), and so on until we specify that Description should appear third (3).  Description will now appear between the Date and Payment fields.
+

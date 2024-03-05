@@ -1,0 +1,17 @@
+--
+Help Topic: Options
+
+   crunchy.py [<options>] [...]
+
+   -is | --ignore-stop
+
+      Continue reading data and ignore the &stop directive.
+
+   -isr | --ignore-stop-reset
+
+      Same as above, but also reset all running values.
+
+   -h [<topic>] | --help [<topic>]
+
+      See the 'usage' topic for help topics.
+

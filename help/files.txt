@@ -1,0 +1,19 @@
+--
+Help Topic: Files
+
+   In the following usage, one or more files can be specified:
+
+      crunchy.py [<files>]
+
+   Examples:
+
+      crunchy.py banking.dat
+
+      crunchy.py banking-2023.dat banking-2024.dat
+
+      crunchy.py banking*.dat
+
+   If no files are listed, you will enter interactive mode, where you can manually enter the same kind of content.  Use Ctrl-D to exit.
+
+   Related help topics:  data-format, directives, map, read, set
+

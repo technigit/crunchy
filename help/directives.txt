@@ -1,0 +1,77 @@
+--
+Help Topic: Directives
+
+   &cd [<path>]
+
+      Change the current working directory to <path>, or reset it if no path is specified.
+
+   &goto <label>
+
+      Jump to the next line with the specified label.
+
+      Example:
+
+         &print This line should be displayed.
+         &goto skip
+         &print This line should not be displayed.
+         skip:
+         &print This line should be displayed.
+
+   &header
+
+      Display the current headers.
+
+   &help [<topic>]
+
+      Display help information.
+
+   &init <float>
+
+      Set the current running balance to the specified float.
+
+   &map <descriptors>
+
+      Remap the fields so that they display in a specified order.
+
+      See also:  &help map
+
+   &output on|off
+
+      Enable or disable the output, but otherwise process the data as usual.
+
+   &print [<text>]
+
+      Display a line of content.
+
+   &read <filename>
+
+      Read and process the contents of the specified file.
+
+      This will also work recursively, up to 5 levels.
+
+      See also:  &help read
+
+   &set catfield <int>
+
+      Specify which field will be the category field.
+
+      See also:  &help set
+
+   &set clrfield <int>
+
+      Specify which field will be the clear field (e.g., cleared the bank).
+
+      See also:  &help set
+
+   &set decfield <int>
+
+      Specify which field will be the decrement field (e.g., withdrawals).
+
+      See also:  &help set
+
+   &set incfield <int>
+
+      Specify which field will be the increment field (e.g., deposits).
+
+      See also:  &help set
+

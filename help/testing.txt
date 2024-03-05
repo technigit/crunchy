@@ -1,0 +1,49 @@
+--
+Help Topic: Testing
+
+   If you are involved in the development of Crunchy Report Generator, you may want to use the testing directives to perform regression testing.  You may also find this functionality useful when you need to report bugs.
+
+   Testing directives:
+
+      &test start <filename>
+
+         Start running a test and compare the output to the contents of <filename>.
+
+      &test pause
+
+         Temporarily pause comparing the output against the contents of the file previously specified by the &test start directive.
+
+      &test resume
+
+         Resume comparing the output to the contents of the file previously specified by the &test start directive.
+
+      &test verbose
+
+         Display all test messages.
+
+      &test quiet
+
+         Only show the most important test messages.  This is the default.
+
+      &test stop
+
+         Stop the test.
+
+   Testing options:
+
+      -st | --skip-testing
+
+         Run the data as usual and ignore all testing directives and options.
+
+      -tv | --test-verbose
+
+         Run testing in verbose mode (same as &test verbose).
+
+      -tfv | --test-force-verbose
+
+         Force testing in verbose mode, even if quiet mode is specified.
+
+      -tfq | --test-force-quiet
+
+         Force testing in quiet mode, even if verbose mode is specified.
+
