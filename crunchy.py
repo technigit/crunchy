@@ -1,28 +1,36 @@
 #!/usr/bin/env python3
 
 '''
- * Copyright (c) 2000, 2022, 2023 Andy Warmack
+ * Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  *
 '''
 
-import fileinput, re, sys, textwrap, traceback
+import fileinput, re, shutil, sys, textwrap, traceback
 from os.path import dirname, exists, realpath
 
 ####################
 # global variables
 ####################
 
+version_ = 'v0.0.7'
+
+# &read recursive depth limit
 max_read_depth_ = 5
 
+# word wrap for help files
+terminal_width_ = shutil.get_terminal_size().columns
+
+# command-line options
 ignore_stop_ = False
 ignore_stop_reset_ = False
 skip_testing_ = False
 test_force_quiet_ = False
 test_force_verbose_ = False
 
+# these global variables can be reset
 def initGlobals():
     global running_, comment_mode_, infomsg_, output_, goto_, read_path_
     global testing_, test_filename_, test_f_, test_pause_, test_verbose_, test_pass_, test_fail_
@@ -65,6 +73,10 @@ def show_info(should_show = False):
     if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
         printLine("""
 Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
+""" + version_ + """
+
+To get help, enter &help
+To exit interactive mode, use Ctrl-D
 """)
 
 ################################################################################
@@ -157,7 +169,14 @@ def testStop(verbose = False):
     global testing_, test_filename_, test_f_, test_pause_, test_pass_, test_fail_
     testing_ = False
     test_pause_ = False
-    if test_f_ != None: test_f_.close()
+    if test_f_ != None:
+        eof_test = test_f_.readline()
+        if eof_test != '':
+            testMessage('The test was unexpectedly interrupted.', True)
+            while eof_test != '':
+                test_fail_ += 1
+                eof_test = test_f_.readline()
+        test_f_.close()
     test_f_ = None
     testMessage('Test stopped.', verbose)
     total = test_pass_ + test_fail_
@@ -272,14 +291,20 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'map':
+        show_usage = False
         if argtrim:
             premap = getElements(argtrim)
             map_ = [None] * len(premap)
-            for m, element in enumerate(premap):
-                map_[int(premap[m]) - 1] = m + 1
-            infoMessage('Fields were remapped.')
+            try:
+                for m, element in enumerate(premap):
+                    map_[int(premap[m]) - 1] = m + 1
+                infoMessage('Fields were remapped.')
+            except ValueError:
+                show_usage = True
         else:
-            infoMessage('Usage: &map <headers>')
+            show_usage = True
+        if show_usage:
+            infoMessage('Usage: &map <int><space><space><int>...')
 
     ####################
 
@@ -528,6 +553,8 @@ def processData():
                 if not running_: break
     except FileNotFoundError as e:
         errorMessage('Input file not found: ' + e.filename)
+    except IndexError:
+        errorMessage('Badly formed data: ' + line)
     except ValueError:
         errorMessage('Invalid input: ' + line)
     except:
@@ -549,7 +576,7 @@ def showHelp(topic, stop_running = False):
         dir_path = dirname(realpath(__file__))
         helpfile = open(dir_path + '/help/' + re.sub(' ', '-', topic).lower() + '.txt')
         for line in helpfile:
-            print(textwrap.fill(line, 90))
+            print(textwrap.fill(line, terminal_width_))
     except FileNotFoundError:
         errorMessage('No help file for \'' + topic + '\' could be found.')
     finally:

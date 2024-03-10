@@ -5,5 +5,5 @@ Help Topic: Usage
 
    Help topics: usage, data-format, directives, files, map, options, read, set, testing
 
-   For more information, use -h followed by one of the help topics listed above.
+   For more information, use -h or &help followed by one of the help topics listed above.
 
