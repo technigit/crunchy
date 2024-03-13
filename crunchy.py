@@ -15,7 +15,7 @@ from os.path import dirname, exists, realpath
 # global variables
 ####################
 
-version_ = 'v0.0.7'
+version_ = 'v0.0.8'
 
 # &read recursive depth limit
 max_read_depth_ = 5
@@ -37,33 +37,33 @@ def initGlobals():
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
     global elements_, headers_, justify_, width_, map_
 
-    running_ = True
-    comment_mode_ = 0
-    infomsg_ = True
-    output_ = True
-    goto_ = None
-    read_path_ = None
+    running_ = [True]
+    comment_mode_ = [0]
+    infomsg_ = [True]
+    output_ = [True]
+    goto_ = [None]
+    read_path_ = [None]
 
-    testing_ = False
-    test_filename_ = None
-    test_f_ = None
-    test_pause_ = False
-    test_verbose_ = False
-    test_pass_ = 0
-    test_fail_ = 0
+    testing_ = [False]
+    test_filename_ = [None]
+    test_f_ = [None]
+    test_pause_ = [False]
+    test_verbose_ = [False]
+    test_pass_ = [0]
+    test_fail_ = [0]
 
-    fulbal_ = 0.0
-    clrbal_ = 0.0
-    catfield_ = None
-    clrfield_ = None
-    incfield_ = None
-    decfield_ = None
+    fulbal_ = [0.0]
+    clrbal_ = [0.0]
+    catfield_ = [None]
+    clrfield_ = [None]
+    incfield_ = [None]
+    decfield_ = [None]
 
     elements_ = None
-    headers_ = None
-    justify_ = None
-    width_ = None
-    map_ = None
+    headers_ = [None]
+    justify_ = [None]
+    width_ = [None]
+    map_ = [None]
 
 ####################
 # functions
@@ -83,38 +83,38 @@ To exit interactive mode, use Ctrl-D
 
 def skipLine(line):
     global comment_mode_, goto_
-    if comment_mode_ == -1: comment_mode_ = 0
-    if re.search('^\s*\/\*', line): comment_mode_ = 1
-    if re.search('\*\/\s*$', line): comment_mode_ = -1
-    if comment_mode_ != 0: return True
+    if comment_mode_[-1] == -1: comment_mode_[-1] = 0
+    if re.search('^\s*\/\*', line): comment_mode_[-1] = 1
+    if re.search('\*\/\s*$', line): comment_mode_[-1] = -1
+    if comment_mode_[-1] != 0: return True
     if re.search('^\s*\#', line): return True
     if re.search('^\s*\/\/', line): return True
     if re.search('^[\s-]*$', line): return True
     m = re.search('^\s*(\S*)\:\s*$', line)
     if m:
-        if m.group(1) == goto_:
-            goto_ = None
+        if m.group(1) == goto_[-1]:
+            goto_[-1] = None
         return True
-    if goto_: return True
+    if goto_[-1]: return True
     return False
 
 ####################
 
 def makeHeaders():
     global elements_, width_, justify_
-    width_ = [None] * len(elements_)
-    justify_ = [None] * len(elements_)
+    width_[-1] = [None] * len(elements_)
+    justify_[-1] = [None] * len(elements_)
     for i, element in enumerate(elements_):
         element = element.strip()
         m = re.search('^.*\D(\d*)$', element)
         if m:
-            width_[i] = int(m.group(1))
+            width_[-1][i] = int(m.group(1))
             element = re.search('^(.*\D)\d*$', element).group(1)
-            justify_[i] = '>'
+            justify_[-1][i] = '>'
             if re.search('\<$', element):
-                justify_[i] = '<'
+                justify_[-1][i] = '<'
             if re.search('\|$', element):
-                justify_[i] = '|'
+                justify_[-1][i] = '|'
             elements_[i] = re.sub('[\<\|\>]$', '', element)
         else:
             return None
@@ -150,7 +150,7 @@ def rjustify(str, width):
 ################################################################################
 
 def infoMessage(message):
-    if infomsg_ and output_: printLine('<i> ' + message)
+    if infomsg_[-1] and output_[-1]: printLine('<i> ' + message)
 
 ####################
 
@@ -161,61 +161,99 @@ def errorMessage(message):
 
 def testMessage(message, verbose = False):
     global test_verbose_
-    if test_verbose_ or verbose: print('<T> ' + message)
+    if test_verbose_[-1] or verbose: print('<T> ' + message)
 
 ####################
 
 def testStop(verbose = False):
     global testing_, test_filename_, test_f_, test_pause_, test_pass_, test_fail_
-    testing_ = False
-    test_pause_ = False
-    if test_f_ != None:
-        eof_test = test_f_.readline()
+    testing_[-1] = False
+    test_pause_[-1] = False
+    if test_f_[-1] != None:
+        eof_test = test_f_[-1].readline()
         if eof_test != '':
             testMessage('The test was unexpectedly interrupted.', True)
             while eof_test != '':
-                test_fail_ += 1
-                eof_test = test_f_.readline()
-        test_f_.close()
-    test_f_ = None
+                test_fail_[-1] += 1
+                eof_test = test_f_[-1].readline()
+        test_f_[-1].close()
+    test_f_[-1] = None
     testMessage('Test stopped.', verbose)
-    total = test_pass_ + test_fail_
+    total = test_pass_[-1] + test_fail_[-1]
     s = 's' if total != 1 else ''
-    testMessage(str(test_pass_ + test_fail_) + ' line' + s + ' tested: ' + str(test_pass_) + ' passed, ' + str(test_fail_) + ' failed :: ' + test_filename_, True)
-    test_filename_ = ''
+    testMessage(str(test_pass_[-1] + test_fail_[-1]) + ' line' + s + ' tested: ' + str(test_pass_[-1]) + ' passed, ' + str(test_fail_[-1]) + ' failed :: ' + test_filename_[-1], True)
+    test_filename_[-1] = ''
 
 ################################################################################
 
 def printLine(line = '', stdio=sys.stdout):
     global testing_, test_filename_, test_f_, test_pass_, test_fail_
-    if testing_:
+    if testing_[-1]:
         try:
-            if test_f_ == None:
-                if exists(test_filename_):
-                    test_f_ = open(test_filename_, 'r')
+            if test_f_[-1] == None:
+                read_source = test_filename_[-1]
+                if read_path_[-1]:
+                    read_source = read_path_[-1] + '/' + test_filename_[-1]
+                if exists(read_source):
+                    test_f_[-1] = open(read_source, 'r')
                 else:
-                    testMessage('File \'' + test_filename_ + '\' does not exist; stopping test.', True)
+                    testMessage('File \'' + read_source + '\' does not exist; stopping test.', True)
                     testStop(True)
-            if test_f_ != None:
+            if test_f_[-1] != None:
                 line = re.sub('\n', '', line)
-                test_line = test_f_.readline()
+                test_line = test_f_[-1].readline()
                 if test_line != '':
                     test_line = re.sub('\n', '', test_line)
                     if line == test_line:
                         testMessage('Passed: ' + line)
-                        test_pass_ += 1
+                        test_pass_[-1] += 1
                     else:
                         testMessage('Expected: ' + test_line, True)
                         testMessage('Received: ' + line, True)
-                        test_fail_ += 1
+                        test_fail_[-1] += 1
                 else:
                     testMessage('Unexpected EOF reached; stopping test.', True)
                     testStop(True)
         except:
             testMessage('Unexpected error: ' + line, True)
             traceback.print_exc()
-    if not testing_:
+    if not testing_[-1]:
         print(line, file=stdio)
+
+################################################################################
+
+def pushGlobals(listnames):
+    for listname in listnames:
+        if listname in globals():
+            list = globals()[listname]
+            list.append(list[-1])
+        else:
+            errorMessage('pushGlobals: ' + listname + ' not found in globals.')
+
+################################################################################
+
+def popGlobals(listnames):
+    for listname in listnames:
+        if listname in globals():
+            list = globals()[listname]
+            if len(list) > 1:
+                list.pop()
+        else:
+            errorMessage('popGlobals: ' + listname + ' not found in globals.')
+
+################################################################################
+
+def pushEnv():
+    pushGlobals(['running_', 'comment_mode_', 'infomsg_', 'output_', 'goto_', 'read_path_'])
+    pushGlobals(['testing_', 'test_filename_', 'test_f_', 'test_pause_', 'test_verbose_', 'test_pass_', 'test_fail_'])
+    pushGlobals(['headers_', 'justify_', 'width_', 'map_'])
+
+################################################################################
+
+def popEnv():
+    popGlobals(['running_', 'comment_mode_', 'infomsg_', 'output_', 'goto_', 'read_path_'])
+    popGlobals(['testing_', 'test_filename_', 'test_f_', 'test_pause_', 'test_verbose_', 'test_pass_', 'test_fail_'])
+    popGlobals(['headers_', 'justify_', 'width_', 'map_'])
 
 ################################################################################
 
@@ -249,18 +287,18 @@ def parseDirective(line):
     ####################
 
     if cmd == 'cd':
-        read_path_ = argtrim
-        if read_path_:
-            infoMessage('Setting current working directory to \'' + read_path_ + '\'.')
+        read_path_[-1] = argtrim
+        if read_path_[-1]:
+            infoMessage('Setting current working directory to \'' + read_path_[-1] + '\'.')
         else:
             infoMessage('Resetting current working directory.')
 
     ####################
 
     elif cmd == 'goto':
-        goto_ = argtrim
+        goto_[-1] = argtrim
         if argtrim:
-            infoMessage('Skipping to \'' + goto_ + '\'.')
+            infoMessage('Skipping to \'' + goto_[-1] + '\'.')
         else:
             infoMessage('Usage: &goto <label>')
 
@@ -268,8 +306,8 @@ def parseDirective(line):
 
     elif cmd == 'header':
         global headers_
-        if headers_:
-            parseLine('  '.join(headers_))
+        if headers_[-1]:
+            parseLine('  '.join(headers_[-1]))
         else:
             errorMessage('No header information found.')
 
@@ -282,9 +320,9 @@ def parseDirective(line):
 
     elif cmd == 'init':
         if argtrim:
-            fulbal_ = float(argtrim)
-            clrbal_ = fulbal_
-            infoMessage('Initializing balance to {:.2f}'.format(fulbal_) + '.')
+            fulbal_[-1] = float(argtrim)
+            clrbal_[-1] = fulbal_[-1]
+            infoMessage('Initializing balance to {:.2f}'.format(fulbal_[-1]) + '.')
         else:
             infoMessage('Usage: &init <float>')
 
@@ -294,10 +332,10 @@ def parseDirective(line):
         show_usage = False
         if argtrim:
             premap = getElements(argtrim)
-            map_ = [None] * len(premap)
+            map_[-1] = [None] * len(premap)
             try:
                 for m, element in enumerate(premap):
-                    map_[int(premap[m]) - 1] = m + 1
+                    map_[-1][int(premap[m]) - 1] = m + 1
                 infoMessage('Fields were remapped.')
             except ValueError:
                 show_usage = True
@@ -309,19 +347,19 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'output' and arg == 'on':
-        output_ = True
+        output_[-1] = True
         infoMessage('Output mode is on.')
     elif cmd == 'output' and arg == 'off':
         infoMessage('Output mode is off.')
-        output_ = False
+        output_[-1] = False
     elif cmd =='output':
         infoMessage('Usage: &output on|off')
 
     ####################
 
-    elif cmd == 'print' and output_:
+    elif cmd == 'print' and output_[-1]:
         printLine(arg) if arg is not None else printLine()
-    elif cmd == 'print' and not output_:
+    elif cmd == 'print' and not output_[-1]:
         pass
 
     ####################
@@ -329,18 +367,29 @@ def parseDirective(line):
     elif cmd == 'read':
         if argtrim:
             read_source = argtrim
-            if read_path_:
-                read_source = read_path_ + '/' + argtrim
+            if read_path_[-1]:
+                read_source = read_path_[-1] + '/' + argtrim
             if max_read_depth_ > 0:
                 max_read_depth_ = max_read_depth_ - 1
                 infoMessage('Reading file ' + read_source + '.')
                 if exists(read_source):
                     f = open(read_source, 'r')
-                    for read_line in f:
-                        read_line = re.sub('\n', '', read_line)
-                        if not skipLine(read_line): parseLine(read_line)
-                    f.close()
-                    infoMessage('Finished reading file ' + read_source + '.')
+                    pushEnv()
+                    try:
+                        for read_line in f:
+                            read_line = re.sub('\n', '', read_line)
+                            if not skipLine(read_line): parseLine(read_line)
+                            if not running_[-1]: break
+                    except:
+                        errorMessage('Unexpected error.')
+                        traceback.print_exc()
+                    finally:
+                        f.close()
+                        if testing_[-1]:
+                            testStop()
+                        if not running_[-1]:
+                            popEnv()
+                        infoMessage('Finished reading file ' + read_source + '.')
                 else:
                     errorMessage(cmd + ': File \'' + read_source + '\' does not exist.')
                 max_read_depth_ = max_read_depth_ + 1
@@ -357,17 +406,17 @@ def parseDirective(line):
             parts = argtrim.split(' ')
             if len(parts) > 1:
                 if (parts[0] == 'catfield'):
-                    catfield_ = int(parts[1])
-                    infoMessage('Setting category field to ' + str(catfield_) + '.')
+                    catfield_[-1] = int(parts[1])
+                    infoMessage('Setting category field to ' + str(catfield_[-1]) + '.')
                 elif (parts[0] == 'clrfield'):
-                    clrfield_ = int(parts[1])
-                    infoMessage('Setting clear field to ' + str(clrfield_) + '.')
+                    clrfield_[-1] = int(parts[1])
+                    infoMessage('Setting clear field to ' + str(clrfield_[-1]) + '.')
                 elif (parts[0] == 'decfield'):
-                    decfield_ = int(parts[1])
-                    infoMessage('Setting decrement field to ' + str(decfield_) + '.')
+                    decfield_[-1] = int(parts[1])
+                    infoMessage('Setting decrement field to ' + str(decfield_[-1]) + '.')
                 elif (parts[0] == 'incfield'):
-                    incfield_ = int(parts[1])
-                    infoMessage('Setting increment field to ' + str(incfield_) + '.')
+                    incfield_[-1] = int(parts[1])
+                    infoMessage('Setting increment field to ' + str(incfield_[-1]) + '.')
                 else:
                     show_usage = True
             else:
@@ -381,9 +430,11 @@ def parseDirective(line):
 
     elif cmd == 'stop':
         if not ignore_stop_:
-            running_ = False
+            if testing_[-1]:
+                testStop()
+            running_[-1] = False
         if ignore_stop_reset_:
-            if testing_:
+            if testing_[-1]:
                 testStop()
             initGlobals()
 
@@ -395,38 +446,38 @@ def parseDirective(line):
         if argtrim == None:
             testMessage(cmd + ': parameters required.')
         elif argtrim.startswith('start'):
-            if not testing_:
+            if not testing_[-1]:
                 m = re.search('^start\s+(\S*)$', argtrim)
                 if m:
-                    test_filename_ = m.group(1)
-                    testing_ = True
-                    test_pause_ = False
-                    test_pass_ = 0
-                    test_fail_ = 0
-                    testMessage('Test started with \'' + test_filename_ + '\'')
+                    test_filename_[-1] = m.group(1)
+                    testing_[-1] = True
+                    test_pause_[-1] = False
+                    test_pass_[-1] = 0
+                    test_fail_[-1] = 0
+                    testMessage('Test started with \'' + test_filename_[-1] + '\'')
                 else:
                     testMessage('Test filename not specified.')
             else:
-                testMessage('Test is already running (' + test_filename_ + ').')
+                testMessage('Test is already running (' + test_filename_[-1] + ').')
         elif argtrim == 'pause':
-            if testing_:
-                test_pause_ = True
+            if testing_[-1]:
+                test_pause_[-1] = True
                 testMessage('Test paused.')
             else:
                 testMessage('No test is currently running.')
         elif argtrim == 'resume':
-            if testing_:
-                test_pause_ = False
+            if testing_[-1]:
+                test_pause_[-1] = False
                 testMessage('Test resumed.')
             else:
                 testMessage('No test is currently running.')
         elif argtrim == 'verbose':
             if not test_force_quiet_:
-                test_verbose_ = True
+                test_verbose_[-1] = True
                 testMessage('Test mode set to verbose.')
         elif argtrim == 'quiet':
             if not test_force_verbose_:
-                test_verbose_ = False
+                test_verbose_[-1] = False
                 testMessage('Test mode set to quiet.')
         elif argtrim == 'stop':
             testStop()
@@ -436,10 +487,10 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'infomsg' and arg == 'on':
-        infomsg_ = True
+        infomsg_[-1] = True
         infoMessage('Infomsg mode is on.')
     elif cmd == 'infomsg' and arg == 'off':
-        infomsg_ = False
+        infomsg_[-1] = False
 
     ####################
 
@@ -498,48 +549,49 @@ def parseLine(line):
         parseDirective(line)
     else:
         elements_ = getElements(line)
-        if headers_ == None:
-            headers_ = makeHeaders()
-        if headers_ == None:
+        if headers_[-1] == None:
+            headers_[-1] = makeHeaders()
+        if headers_[-1] == None:
             errorMessage('Invalid header configuration: ' + line)
-            running_ = False
+            running_[-1] = False
+            popEnv()
             return
         out = ''
         for i, element in enumerate(elements_):
             m = i
-            if map_ != None:
-                m = map_[i] - 1
-            if not headers_[m].startswith('#'):
-                align = justify_[m]
+            if map_[-1] != None:
+                m = map_[-1][i] - 1
+            if not headers_[-1][m].startswith('#'):
+                align = justify_[-1][m]
                 if align == '<':
-                    out += ljustify(elements_[m], width_[m]) + ' '
+                    out += ljustify(elements_[m], width_[-1][m]) + ' '
                 if align == '|':
-                    out += cjustify(elements_[m], width_[m]) + ' '
+                    out += cjustify(elements_[m], width_[-1][m]) + ' '
                 if align == '>':
-                    out += rjustify(elements_[m], width_[m]) + ' '
+                    out += rjustify(elements_[m], width_[-1][m]) + ' '
         payamt = 0.0
         depamt = 0.0
-        if decfield_ != None:
-            payamt = elements_[decfield_]
+        if decfield_[-1] != None:
+            payamt = elements_[decfield_[-1]]
             payamt = re.sub('^\d\.-', '', payamt)
             if payamt.strip() == '':
                 payamt = 0.0
         else:
             errorMessage('Decrement field is not set.')
-        if incfield_ != None:
-            depamt = elements_[incfield_]
+        if incfield_[-1] != None:
+            depamt = elements_[incfield_[-1]]
             depamt = re.sub('^\d\.-', '', depamt)
             if depamt.strip() == '':
                 depamt = 0.0
         else:
             errorMessage('Increment field is not set.')
         try:
-            fulbal_ -= float(payamt)
-            fulbal_ += float(depamt)
+            fulbal_[-1] -= float(payamt)
+            fulbal_[-1] += float(depamt)
         except ValueError:
             pass
-        if output_:
-            printLine('{0} {1:8.2f} ({2:8.2f})'.format(out, fulbal_, clrbal_))
+        if output_[-1]:
+            printLine('{0} {1:8.2f} ({2:8.2f})'.format(out, fulbal_[-1], clrbal_[-1]))
 
 ################################################################################
 
@@ -550,7 +602,7 @@ def processData():
             for line in input:
                 line = re.sub('\n', '', line)
                 if not skipLine(line): parseLine(line)
-                if not running_: break
+                if not running_[-1]: break
     except FileNotFoundError as e:
         errorMessage('Input file not found: ' + e.filename)
     except IndexError:
@@ -562,7 +614,7 @@ def processData():
         traceback.print_exc()
     finally:
         fileinput.close()
-        if testing_:
+        if testing_[-1]:
             testStop()
 
 ################################################################################
@@ -583,7 +635,8 @@ def showHelp(topic, stop_running = False):
         if helpfile:
             helpfile.close()
     if stop_running:
-        running_ = False
+        running_[-1] = False
+        popEnv()
 
 ####################
 # start here
@@ -598,8 +651,9 @@ show_info()
 filenames = parseOptions()
 
 # main parsing loop
-if running_:
+if running_[-1]:
     processData()
 
-if goto_:
-    errorMessage('EOF reached before tag \'' + goto_ + '\'.')
+# gracefully handle uncompleted goto directives
+if goto_[-1]:
+    errorMessage('EOF reached before tag \'' + goto_[-1] + '\'.')
