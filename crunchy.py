@@ -11,17 +11,27 @@
 import fileinput, re, shutil, sys, textwrap, traceback
 from os.path import dirname, exists, realpath
 
+# class methods to set text colors
+class ANSI():
+    def set_display_attribute(code): return "\33[{attr}m".format(attr = code)
+    FG_DEFAULT = set_display_attribute(0)
+    FG_RED = set_display_attribute(31)
+    FG_YELLOW = set_display_attribute(33)
+    FG_GREEN = set_display_attribute(32)
+
 ####################
 # global variables
 ####################
 
-version_ = 'v0.0.8'
+version_ = 'v0.0.9'
 
-# &read recursive depth limit
+# &read recursion depth limit
 max_read_depth_ = 5
 
 # word wrap for help files
 terminal_width_ = shutil.get_terminal_size().columns
+
+interactive_ = False
 
 # command-line options
 ignore_stop_ = False
@@ -70,7 +80,9 @@ def initGlobals():
 ####################
 
 def show_info(should_show = False):
+    global interactive_
     if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
+        interactive_ = True
         printLine("""
 Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
 """ + version_ + """
@@ -155,13 +167,13 @@ def infoMessage(message):
 ####################
 
 def errorMessage(message):
-    printLine('<E> ' + message, sys.stderr)
+    printLine(ANSI.FG_RED + '<E> ' + message + ANSI.FG_DEFAULT, sys.stderr)
 
 ################################################################################
 
 def testMessage(message, verbose = False):
     global test_verbose_
-    if test_verbose_[-1] or verbose: print('<T> ' + message)
+    if test_verbose_[-1] or verbose: print(ANSI.FG_YELLOW + '<T> ' + message + ANSI.FG_DEFAULT)
 
 ####################
 
@@ -181,7 +193,18 @@ def testStop(verbose = False):
     testMessage('Test stopped.', verbose)
     total = test_pass_[-1] + test_fail_[-1]
     s = 's' if total != 1 else ''
-    testMessage(str(test_pass_[-1] + test_fail_[-1]) + ' line' + s + ' tested: ' + str(test_pass_[-1]) + ' passed, ' + str(test_fail_[-1]) + ' failed :: ' + test_filename_[-1], True)
+    tested = str(total) + ' line' + s + ' tested: '
+    if test_pass_[-1] > 0:
+        passed = ANSI.FG_GREEN + str(test_pass_[-1]) + ' passed' + ANSI.FG_YELLOW + ' :: '
+    else:
+        passed = str(test_pass_[-1]) + ' passed :: '
+    if test_fail_[-1] > 0:
+        failed = ANSI.FG_RED + str(test_fail_[-1]) + ' failed' + ANSI.FG_YELLOW + ' :: '
+    else:
+        failed = str(test_fail_[-1]) + ' failed :: '
+    testfile = test_filename_[-1]
+    text_offset = 0 if total < 1000 else 2 # make room for big numbers
+    testMessage(rjustify(tested, 18 + text_offset) + rjustify(passed, 24 + text_offset) + failed + testfile, True)
     test_filename_[-1] = ''
 
 ################################################################################
@@ -380,6 +403,10 @@ def parseDirective(line):
                             read_line = re.sub('\n', '', read_line)
                             if not skipLine(read_line): parseLine(read_line)
                             if not running_[-1]: break
+                    except IndexError:
+                        errorMessage('Badly formed data: ' + read_line)
+                    except ValueError:
+                        errorMessage('Invalid input: ' + read_line)
                     except:
                         errorMessage('Unexpected error.')
                         traceback.print_exc()
@@ -387,8 +414,7 @@ def parseDirective(line):
                         f.close()
                         if testing_[-1]:
                             testStop()
-                        if not running_[-1]:
-                            popEnv()
+                        popEnv()
                         infoMessage('Finished reading file ' + read_source + '.')
                 else:
                     errorMessage(cmd + ': File \'' + read_source + '\' does not exist.')
@@ -597,6 +623,7 @@ def parseLine(line):
 
 def processData():
     global running_, testing_
+    should_stop = True
     try:
         with fileinput.FileInput(files=(filenames), mode='r') as input:
             for line in input:
@@ -607,8 +634,12 @@ def processData():
         errorMessage('Input file not found: ' + e.filename)
     except IndexError:
         errorMessage('Badly formed data: ' + line)
+        should_stop = False
     except ValueError:
         errorMessage('Invalid input: ' + line)
+        should_stop = False
+    except KeyboardInterrupt:
+        errorMessage('Interrupted.')
     except:
         errorMessage('Unexpected error.')
         traceback.print_exc()
@@ -616,6 +647,8 @@ def processData():
         fileinput.close()
         if testing_[-1]:
             testStop()
+    if should_stop:
+        running_[-1] = False
 
 ################################################################################
 
@@ -651,8 +684,10 @@ show_info()
 filenames = parseOptions()
 
 # main parsing loop
-if running_[-1]:
+while running_[-1]:
     processData()
+    if not interactive_:
+        break
 
 # gracefully handle uncompleted goto directives
 if goto_[-1]:

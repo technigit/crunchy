@@ -43,11 +43,11 @@ Help Topic: Directives
 
       Display a line of content.
 
-   &read <filename>
+   &read [path]<filename>
 
       Read and process the contents of the specified file.
 
-      This will also work recursively, up to 5 levels.
+      This directive works recursively, up to a certain number of levels.  Any environment settings changed during the &read process will revert when it terminates and returns control to the calling process.
 
       See also:  &help read
 

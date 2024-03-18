@@ -1,9 +1,9 @@
 --
 Help Topic: &read
 
-   Usage: &read <filename>
+   Usage: &read [path]<filename>
 
-   This directive allows you to read another file from within a data file, and the contents are processed as if they were part of that data file.
+   This directive allows you to read an external file from within a data file, and the contents are essentially processed as if they were part of that originating data file.
 
-   This directive works recursively, meaning that the external file may also use the &read directive.  However, there is a limit to the recursion depth.
+   This directive works recursively up to a certain depth, so the files being read may also use the &read directive.  When a &read process is launched, the environment values are copied from the calling process.  Any environment settings changed during the external file read process will revert after completion or termination.
 
