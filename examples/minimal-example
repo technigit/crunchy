@@ -1,0 +1,9 @@
+&init 2013.12
+&set decfield 2
+&set clrfield 3
+&set incfield 4
+Check|5     Date|10   Payment8  Clear1   Deposit8  Description<22  Actual8  Cleared8
+      -  11/01/2023      10.45       *          -  Wordpress hosting
+      -  11/01/2023      48.77       *          -  Torchy's
+      -  11/01/2023          -       *    1500.00  paycheck
+      -  11/01/2023     745.00       -          -  apartment

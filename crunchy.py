@@ -23,7 +23,7 @@ class ANSI():
 # global variables
 ####################
 
-version_ = 'v0.0.9'
+version_ = 'v0.0.10'
 
 # &read recursion depth limit
 max_read_depth_ = 5
@@ -31,7 +31,11 @@ max_read_depth_ = 5
 # word wrap for help files
 terminal_width_ = shutil.get_terminal_size().columns
 
+# interactive mode affects UX for error handling
 interactive_ = False
+
+# show the header when needed
+header_mode_ = False
 
 # command-line options
 ignore_stop_ = False
@@ -295,6 +299,7 @@ def parseDirective(line):
     global testing_, test_filename_, test_pause, test_verbose_, test_pass_, test_fail_
     global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
+    global header_mode_
     argtrim = ''
     arg = None
     m = re.search('^\s*\S(\S*)\s(.*)$', line)
@@ -330,6 +335,7 @@ def parseDirective(line):
     elif cmd == 'header':
         global headers_
         if headers_[-1]:
+            header_mode_ = True
             parseLine('  '.join(headers_[-1]))
         else:
             errorMessage('No header information found.')
@@ -570,13 +576,14 @@ def parseOptions():
 def parseLine(line):
     global running_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
-    global elements_, headers_
+    global elements_, headers_, header_mode_
     if re.search('^\s*&', line):
         parseDirective(line)
     else:
         elements_ = getElements(line)
         if headers_[-1] == None:
             headers_[-1] = makeHeaders()
+            header_mode_ = True
         if headers_[-1] == None:
             errorMessage('Invalid header configuration: ' + line)
             running_[-1] = False
@@ -614,10 +621,17 @@ def parseLine(line):
         try:
             fulbal_[-1] -= float(payamt)
             fulbal_[-1] += float(depamt)
+            if elements_[clrfield_[-1]] != ' ':
+                clrbal_[-1] -= float(payamt)
+                clrbal_[-1] += float(depamt)
         except ValueError:
             pass
         if output_[-1]:
-            printLine('{0} {1:8.2f} ({2:8.2f})'.format(out, fulbal_[-1], clrbal_[-1]))
+            if header_mode_:
+                printLine('{0}'.format(out))
+                header_mode_ = False
+            else:
+                printLine('{0}{1:8.2f} {2:8.2f}'.format(out, fulbal_[-1], clrbal_[-1]))
 
 ################################################################################
 
