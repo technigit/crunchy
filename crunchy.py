@@ -23,7 +23,7 @@ class ANSI():
 # global variables
 ####################
 
-version_ = 'v0.0.10'
+version_ = 'v0.0.11'
 
 # &read recursion depth limit
 max_read_depth_ = 5
@@ -48,7 +48,7 @@ test_force_verbose_ = False
 def initGlobals():
     global running_, comment_mode_, infomsg_, output_, goto_, read_path_
     global testing_, test_filename_, test_f_, test_pause_, test_verbose_, test_pass_, test_fail_
-    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
+    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_
     global elements_, headers_, justify_, width_, map_
 
     running_ = [True]
@@ -72,6 +72,7 @@ def initGlobals():
     clrfield_ = [None]
     incfield_ = [None]
     decfield_ = [None]
+    catvalues_ = {}
 
     elements_ = None
     headers_ = [None]
@@ -163,6 +164,11 @@ def cjustify(str, width):
 def rjustify(str, width):
     return str.rjust(width)[:width]
 
+####################
+
+def currency(num):
+    return '${:,.2f}'.format(num)
+
 ################################################################################
 
 def infoMessage(message):
@@ -235,8 +241,8 @@ def printLine(line = '', stdio=sys.stdout):
                         testMessage('Passed: ' + line)
                         test_pass_[-1] += 1
                     else:
-                        testMessage('Expected: ' + test_line, True)
-                        testMessage('Received: ' + line, True)
+                        testMessage("Expected: '{0}'".format(test_line), True)
+                        testMessage("Received: '{0}'".format(line), True)
                         test_fail_[-1] += 1
                 else:
                     testMessage('Unexpected EOF reached; stopping test.', True)
@@ -299,7 +305,7 @@ def parseDirective(line):
     global testing_, test_filename_, test_pause, test_verbose_, test_pass_, test_fail_
     global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
-    global header_mode_
+    global headers_, header_mode_
     argtrim = ''
     arg = None
     m = re.search('^\s*\S(\S*)\s(.*)$', line)
@@ -314,7 +320,19 @@ def parseDirective(line):
 
     ####################
 
-    if cmd == 'cd':
+    if cmd == 'cat':
+        if not argtrim:
+            prettyCat('All')
+        elif not ' ' in argtrim:
+            prettyCat(argtrim)
+        else:
+            prettyCatHeader()
+            for category in argtrim.split():
+                prettyCat(category, True)
+
+    ####################
+
+    elif cmd == 'cd':
         read_path_[-1] = argtrim
         if read_path_[-1]:
             infoMessage('Setting current working directory to \'' + read_path_[-1] + '\'.')
@@ -333,7 +351,6 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'header':
-        global headers_
         if headers_[-1]:
             header_mode_ = True
             parseLine('  '.join(headers_[-1]))
@@ -351,7 +368,7 @@ def parseDirective(line):
         if argtrim:
             fulbal_[-1] = float(argtrim)
             clrbal_[-1] = fulbal_[-1]
-            infoMessage('Initializing balance to {:.2f}'.format(fulbal_[-1]) + '.')
+            infoMessage('Initializing balance to {0}.'.format(currency(fulbal_[-1])))
         else:
             infoMessage('Usage: &init <float>')
 
@@ -435,7 +452,7 @@ def parseDirective(line):
     elif cmd == 'set':
         show_usage = False
         if argtrim:
-            parts = argtrim.split(' ')
+            parts = argtrim.split()
             if len(parts) > 1:
                 if (parts[0] == 'catfield'):
                     catfield_[-1] = int(parts[1])
@@ -529,6 +546,51 @@ def parseDirective(line):
     else:
         errorMessage('Invalid directive: ' + line)
 
+####################
+
+def prettyCatHeader():
+    cat_header_width = width_[-1][catfield_[-1]]
+    dec_header = headers_[-1][decfield_[-1]]
+    dec_header_width = width_[-1][decfield_[-1]]
+    inc_header = headers_[-1][incfield_[-1]]
+    inc_header_width = width_[-1][incfield_[-1]]
+    printLine('{0} {1}  {2}'.format(
+        rjustify('', cat_header_width + 2),
+        rjustify(dec_header, dec_header_width + 3),
+        rjustify(inc_header, inc_header_width + 3))
+    )
+
+####################
+
+def prettyCat(category, use_header = False):
+    global incfield_, decfield_
+    catpay_key = category + 'payamt'
+    catdep_key = category + 'depamt'
+    if not catpay_key in catvalues_ or not catdep_key in catvalues_:
+        catpay_key = 'payamt'
+        catdep_key = 'depamt'
+    cat_header_width = width_[-1][catfield_[-1]]
+    dec_header = headers_[-1][decfield_[-1]]
+    dec_header_width = width_[-1][decfield_[-1]]
+    catpay_currency = currency(catvalues_[catpay_key])
+    inc_header = headers_[-1][incfield_[-1]]
+    inc_header_width = width_[-1][incfield_[-1]]
+    catdep_currency = currency(catvalues_[catdep_key])
+    if not use_header:
+        printLine('{0} :: {1}: {2}  {3}: {4}'.format(
+            rjustify(category, cat_header_width),
+            rjustify(dec_header, dec_header_width),
+            rjustify(catpay_currency, dec_header_width + 3),
+            rjustify(inc_header, inc_header_width),
+            rjustify(catdep_currency, inc_header_width + 3))
+        )
+    else:
+        printLine('{0} | {1}  {2}'.format(
+            rjustify(category, cat_header_width),
+            rjustify(catpay_currency, dec_header_width + 3),
+            rjustify(catdep_currency, inc_header_width + 3))
+        )
+
 ################################################################################
 
 def parseOptions():
@@ -575,7 +637,7 @@ def parseOptions():
 
 def parseLine(line):
     global running_
-    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_
+    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_
     global elements_, headers_, header_mode_
     if re.search('^\s*&', line):
         parseDirective(line)
@@ -619,19 +681,30 @@ def parseLine(line):
         else:
             errorMessage('Increment field is not set.')
         try:
+            if not 'payamt' in catvalues_: catvalues_['payamt'] = 0.0
+            catvalues_['payamt'] += float(payamt)
+            if not 'depamt' in catvalues_: catvalues_['depamt'] = 0.0
+            catvalues_['depamt'] += float(depamt)
             fulbal_[-1] -= float(payamt)
             fulbal_[-1] += float(depamt)
             if elements_[clrfield_[-1]] != ' ':
                 clrbal_[-1] -= float(payamt)
                 clrbal_[-1] += float(depamt)
+            if catfield_[-1] != None and elements_[catfield_[-1]] != ' ':
+                catpay_key = elements_[catfield_[-1]] + 'payamt'
+                catdep_key = elements_[catfield_[-1]] + 'depamt'
+                if not catpay_key in catvalues_: catvalues_[catpay_key] = 0.0
+                catvalues_[catpay_key] += float(payamt)
+                if not catdep_key in catvalues_: catvalues_[catdep_key] = 0.0
+                catvalues_[catdep_key] += float(depamt)
         except ValueError:
             pass
         if output_[-1]:
             if header_mode_:
                 printLine('{0}'.format(out))
-                header_mode_ = False
             else:
                 printLine('{0}{1:8.2f} {2:8.2f}'.format(out, fulbal_[-1], clrbal_[-1]))
+        header_mode_ = False
 
 ################################################################################
 
