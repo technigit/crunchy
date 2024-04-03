@@ -23,7 +23,7 @@ class ANSI():
 # global variables
 ####################
 
-version_ = 'v0.0.11'
+version_ = 'v0.0.12'
 
 # &read recursion depth limit
 max_read_depth_ = 5
@@ -36,6 +36,9 @@ interactive_ = False
 
 # show the header when needed
 header_mode_ = False
+
+# executing &read in inline or sandbox mode
+read_inline_ = False
 
 # command-line options
 ignore_stop_ = False
@@ -230,7 +233,7 @@ def printLine(line = '', stdio=sys.stdout):
                 if exists(read_source):
                     test_f_[-1] = open(read_source, 'r')
                 else:
-                    testMessage('File \'' + read_source + '\' does not exist; stopping test.', True)
+                    testMessage("File '{0}' does not exist; stopping test.".format(read_source), True)
                     testStop(True)
             if test_f_[-1] != None:
                 line = re.sub('\n', '', line)
@@ -261,18 +264,24 @@ def pushGlobals(listnames):
             list = globals()[listname]
             list.append(list[-1])
         else:
-            errorMessage('pushGlobals: ' + listname + ' not found in globals.')
+            errorMessage("pushGlobals: '{0}' not found in globals.".format(listname))
 
 ################################################################################
 
 def popGlobals(listnames):
+    global read_inline_
     for listname in listnames:
         if listname in globals():
             list = globals()[listname]
             if len(list) > 1:
-                list.pop()
+                if not read_inline_:
+                    list.pop()
+                else:
+                    copy = list[-1]
+                    list.pop()
+                    list[-1] = copy
         else:
-            errorMessage('popGlobals: ' + listname + ' not found in globals.')
+            errorMessage("popGlobals: '{0}' not found in globals.".format(listname))
 
 ################################################################################
 
@@ -284,6 +293,7 @@ def pushEnv():
 ################################################################################
 
 def popEnv():
+    global read_inline_
     popGlobals(['running_', 'comment_mode_', 'infomsg_', 'output_', 'goto_', 'read_path_'])
     popGlobals(['testing_', 'test_filename_', 'test_f_', 'test_pause_', 'test_verbose_', 'test_pass_', 'test_fail_'])
     popGlobals(['headers_', 'justify_', 'width_', 'map_'])
@@ -306,16 +316,25 @@ def parseDirective(line):
     global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
     global headers_, header_mode_
-    argtrim = ''
     arg = None
+    argtrim = None
+    options = []
     m = re.search('^\s*\S(\S*)\s(.*)$', line)
     if m:
         arg = m.group(2)
         argtrim = arg.strip()
+        while arg.startswith('-'):
+            options.append(argtrim.split()[0])
+            # trim the option and remove one space after it
+            arg = re.sub('^\s*' + options[-1], '', arg)
+            arg = re.sub('^\s', '', arg)
+            # trim the option and remove all spaces after it
+            argtrim = re.sub('^' + options[-1], '', argtrim)
+            argtrim = argtrim.lstrip()
+        if len(options) == 0:
+            options.append('') # insert dummy element
     else:
         m = re.search('^\s*\S(\S*)$', line)
-        arg = None
-        argtrim = None
     cmd = m.group(1)
 
     ####################
@@ -335,7 +354,7 @@ def parseDirective(line):
     elif cmd == 'cd':
         read_path_[-1] = argtrim
         if read_path_[-1]:
-            infoMessage('Setting current working directory to \'' + read_path_[-1] + '\'.')
+            infoMessage("Setting current working directory to '{0}'.".format(read_path_[-1]))
         else:
             infoMessage('Resetting current working directory.')
 
@@ -344,7 +363,7 @@ def parseDirective(line):
     elif cmd == 'goto':
         goto_[-1] = argtrim
         if argtrim:
-            infoMessage('Skipping to \'' + goto_[-1] + '\'.')
+            infoMessage("Skipping to '{0}'.".format(goto_[-1]))
         else:
             infoMessage('Usage: &goto <label>')
 
@@ -403,21 +422,39 @@ def parseDirective(line):
 
     ####################
 
-    elif cmd == 'print' and output_[-1]:
-        printLine(arg) if arg is not None else printLine()
-    elif cmd == 'print' and not output_[-1]:
-        pass
+    elif cmd == 'print':
+        done = False
+        for option in options:
+            if option in ['-f', '--force']:
+                # force print
+                printLine(arg)
+                done = True
+            else:
+                unrecognizedOption(option)
+        if not done:
+            if output_[-1]:
+                printLine(arg) if arg is not None else printLine()
+            else:
+                pass
 
     ####################
 
     elif cmd == 'read':
         if argtrim:
+            global read_inline_
+            for option in options:
+                if option in ['-i', '--inline']:
+                    read_inline_ = True
+                elif option in ['-s', '--sandbox']:
+                    read_inline = False
+                else:
+                    unrecognizedOption(option)
             read_source = argtrim
             if read_path_[-1]:
                 read_source = read_path_[-1] + '/' + argtrim
             if max_read_depth_ > 0:
                 max_read_depth_ = max_read_depth_ - 1
-                infoMessage('Reading file ' + read_source + '.')
+                infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if read_inline_ else ''))
                 if exists(read_source):
                     f = open(read_source, 'r')
                     pushEnv()
@@ -438,12 +475,12 @@ def parseDirective(line):
                         if testing_[-1]:
                             testStop()
                         popEnv()
-                        infoMessage('Finished reading file ' + read_source + '.')
+                        infoMessage('Finished{0} reading file {1}.'.format(' inline' if read_inline_ else '', read_source))
                 else:
-                    errorMessage(cmd + ': File \'' + read_source + '\' does not exist.')
+                    errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source))
                 max_read_depth_ = max_read_depth_ + 1
             else:
-                errorMessage(cmd + ': Nested level too deep; will not read ' + read_source + '.')
+                errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source))
         else:
             infoMessage('Usage: &read <filename>')
 
@@ -456,16 +493,16 @@ def parseDirective(line):
             if len(parts) > 1:
                 if (parts[0] == 'catfield'):
                     catfield_[-1] = int(parts[1])
-                    infoMessage('Setting category field to ' + str(catfield_[-1]) + '.')
+                    infoMessage('Setting category field to {0}.'.format(str(catfield_[-1])))
                 elif (parts[0] == 'clrfield'):
                     clrfield_[-1] = int(parts[1])
-                    infoMessage('Setting clear field to ' + str(clrfield_[-1]) + '.')
+                    infoMessage('Setting clear field to {0}.'.format(str(clrfield_[-1])))
                 elif (parts[0] == 'decfield'):
                     decfield_[-1] = int(parts[1])
-                    infoMessage('Setting decrement field to ' + str(decfield_[-1]) + '.')
+                    infoMessage('Setting decrement field to {0}.'.format(str(decfield_[-1])))
                 elif (parts[0] == 'incfield'):
                     incfield_[-1] = int(parts[1])
-                    infoMessage('Setting increment field to ' + str(incfield_[-1]) + '.')
+                    infoMessage('Setting increment field to {0}.'.format(str(incfield_[-1])))
                 else:
                     show_usage = True
             else:
@@ -503,11 +540,11 @@ def parseDirective(line):
                     test_pause_[-1] = False
                     test_pass_[-1] = 0
                     test_fail_[-1] = 0
-                    testMessage('Test started with \'' + test_filename_[-1] + '\'')
+                    testMessage("Test started with {0}".format(test_filename_[-1]))
                 else:
                     testMessage('Test filename not specified.')
             else:
-                testMessage('Test is already running (' + test_filename_[-1] + ').')
+                testMessage('Test is already running ({0}).'.format(test_filename_[-1]))
         elif argtrim == 'pause':
             if testing_[-1]:
                 test_pause_[-1] = True
@@ -545,6 +582,12 @@ def parseDirective(line):
 
     else:
         errorMessage('Invalid directive: ' + line)
+
+####################
+
+def unrecognizedOption(option):
+    if option != '':
+        errorMessage('Unrecognized option: {0}'.format(option))
 
 ####################
 
@@ -750,7 +793,7 @@ def showHelp(topic, stop_running = False):
         for line in helpfile:
             print(textwrap.fill(line, terminal_width_))
     except FileNotFoundError:
-        errorMessage('No help file for \'' + topic + '\' could be found.')
+        errorMessage("No help file for '{0}' could be found.".format(topic))
     finally:
         if helpfile:
             helpfile.close()
@@ -778,4 +821,4 @@ while running_[-1]:
 
 # gracefully handle uncompleted goto directives
 if goto_[-1]:
-    errorMessage('EOF reached before tag \'' + goto_[-1] + '\'.')
+    errorMessage("EOF reached before tag '{0}'.".format(goto_[-1]))

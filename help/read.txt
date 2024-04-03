@@ -1,9 +1,19 @@
 --
 Help Topic: &read
 
-   Usage: &read [path]<filename>
+   Usage: &read [<options>] [path]<filename>
 
    This directive allows you to read an external file from within a data file, and the contents are essentially processed as if they were part of that originating data file.
 
    This directive works recursively up to a certain depth, so the files being read may also use the &read directive.  When a &read process is launched, the environment values are copied from the calling process.  Any environment settings changed during the external file read process will revert after completion or termination.
+
+   Options:
+
+      -i | --inline
+
+         Do not read the file in an isolated sandbox context.  The current/updated environment values are retained when &read          completes or is terminated.
+
+      -s | --sandbox
+
+         Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read    completes or is terminated.
 

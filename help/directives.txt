@@ -39,15 +39,31 @@ Help Topic: Directives
 
       Enable or disable the output, but otherwise process the data as usual.
 
-   &print [<text>]
+   &print [<options>] [<text>]
 
       Display a line of content.
 
-   &read [path]<filename>
+      Options:
+
+         -f | --force
+
+            Force the text to be displayed, even if output mode is turned off.
+
+   &read [<options>] [path]<filename>
 
       Read and process the contents of the specified file.
 
       This directive works recursively, up to a certain number of levels.  Any environment settings changed during the &read process will revert when it terminates and returns control to the calling process.
+
+      Options:
+
+         -i | --inline
+
+            Do not read the file in an isolated sandbox context.  The current/updated environment values are retained when &read completes or is terminated.
+
+         -s | --sandbox
+
+            Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read completes or is terminated.
 
       See also:  &help read
 
