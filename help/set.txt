@@ -7,3 +7,5 @@ Help Topic: &set
 
    These properties affect how the running totals are computed.  In particular, the field specified by clrfield will be the clear field indicating which entries have cleared the bank.  The decfield and incfield properties indicate which fields act as withdrawals or deposits, respectively.
 
+   See also:  &help categories
+

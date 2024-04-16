@@ -1,0 +1,176 @@
+--
+Help Topic: Stats
+
+   As noted in the Categories help topic, assigning a category to each transactional entry allows a filtered set of entries to be analyzed.  For example, EAT could be a category for eating out in general, while TACOS would be a category just for eating at taco restaurants.  From there, you could use &stats to get insights on how often you eat at taco shops as opposed to other restaurants.
+   This directive can be used to display statistical information such as the following:
+
+      - total incoming and outgoing values
+
+      - start and finish values
+
+      - increase/decrease percentages between the start and finish values
+
+      - minimum, average, and maximum values
+
+   See also:  &help categories
+
+   Example:
+
+      &init 2013.12
+      &set catfield 0
+      &set decfield 2
+      &set clrfield 3
+      &set incfield 4
+      &header Cat<7     Date|10   Payment9  Clear1   Deposit9  Description<22
+               BLOG  11/01/2023      10.45       *          -  Wordpress hosting
+          TACOS EAT  11/01/2023      48.77       *          -  Torchy's
+                PAY  11/01/2023          -       *    1500.00  paycheck
+               RENT  11/01/2023     745.00       *          -  apartment
+             WB EAT  11/02/2023      16.29       *          -  Whataburger
+               HOME  11/02/2023      80.56       *          -  city water
+                EAT  11/03/2023      21.31       *          -  Portillo's
+                FUN  11/03/2023      21.64       *          -  Netflix
+               HOME  11/03/2023     137.13       *          -  Kroger
+                EAT  11/04/2023      23.76       *          -  Wendy's
+                DEV  11/04/2023     377.99       *          -  Micro Center
+                DEV  11/04/2023     213.02       *          -  Best Buy
+                EAT  11/05/2023      33.88       *          -  McDonald's
+                EAT  11/05/2023      12.01       *          -  McDonald's
+               HOME  11/05/2023      58.33       *          -  Kroger
+                FUN  11/05/2023      73.62       *          -  Walmart
+          TACOS EAT  11/07/2023      36.29       *          -  Taco Cabana
+                EAT  11/08/2023      14.86       *          -  Wendy's
+          TACOS EAT  11/09/2023      43.41       *          -  Fuzzy's Taco Shop
+               MISC  11/10/2023       2.99       *          -  Apple storage
+             WB EAT  11/11/2023      12.61       *          -  Whataburger
+                FUN  11/12/2023     121.10       *          -  Amazon
+               MISC  11/13/2023       2.12       *          -  Google storage
+               HOME  11/13/2023      92.55       *          -  phone
+                PAY  11/15/2023          -       *    1500.00  paycheck
+               MISC  11/15/2023     230.00       *          -  Public Storage
+               HOME  11/16/2023     245.02       *          -  electric
+               HOME  11/20/2023     143.16       *          -  fiber Internet
+               MISC  11/20/2023     500.00       *          -  credit card
+                CAR  11/23/2023     534.23       *          -  car payment
+                FUN  11/26/2023       8.65       *          -  Hulu
+                CAR  11/30/2023     265.34       -          -  car insurance
+      &print
+      &print "--
+      &print &stats
+      &stats
+      &print "--
+      &print &stats All
+      &stats All
+      &print "--
+      &print &stats Example
+      &stats Example
+      &print "--
+      &print &stats All PAY EAT TACOS
+      &stats All PAY EAT TACOS
+      &print "--
+      &print &stats -f
+      &stats -f
+      &print "--
+      &print &stats -f FUN
+      &stats -f FUN
+      &print "--
+      &print &stats -f All PAY EAT TACOS
+      &stats -f All PAY EAT TACOS
+      &stop
+
+   Output:
+
+      <i> Initializing balance to $2,013.12.
+      <i> Setting category field to 0.
+      <i> Setting decrement field to 2.
+      <i> Setting clear field to 3.
+      <i> Setting increment field to 4.
+      Cat        Date      Payment C   Deposit Description
+      BLOG    11/01/2023     10.45 *           Wordpress hosting       2002.67  2002.67
+      TACOS E 11/01/2023     48.77 *           Torchy's                1953.90  1953.90
+      PAY     11/01/2023           *   1500.00 paycheck                3453.90  3453.90
+      RENT    11/01/2023    745.00 *           apartment               2708.90  2708.90
+      WB EAT  11/02/2023     16.29 *           Whataburger             2692.61  2692.61
+      HOME    11/02/2023     80.56 *           city water              2612.05  2612.05
+      EAT     11/03/2023     21.31 *           Portillo's              2590.74  2590.74
+      FUN     11/03/2023     21.64 *           Netflix                 2569.10  2569.10
+      HOME    11/03/2023    137.13 *           Kroger                  2431.97  2431.97
+      EAT     11/04/2023     23.76 *           Wendy's                 2408.21  2408.21
+      DEV     11/04/2023    377.99 *           Micro Center            2030.22  2030.22
+      DEV     11/04/2023    213.02 *           Best Buy                1817.20  1817.20
+      EAT     11/05/2023     33.88 *           McDonald's              1783.32  1783.32
+      EAT     11/05/2023     12.01 *           McDonald's              1771.31  1771.31
+      HOME    11/05/2023     58.33 *           Kroger                  1712.98  1712.98
+      FUN     11/05/2023     73.62 *           Walmart                 1639.36  1639.36
+      TACOS E 11/07/2023     36.29 *           Taco Cabana             1603.07  1603.07
+      EAT     11/08/2023     14.86 *           Wendy's                 1588.21  1588.21
+      TACOS E 11/09/2023     43.41 *           Fuzzy's Taco Shop       1544.80  1544.80
+      MISC    11/10/2023      2.99 *           Apple storage           1541.81  1541.81
+      WB EAT  11/11/2023     12.61 *           Whataburger             1529.20  1529.20
+      FUN     11/12/2023    121.10 *           Amazon                  1408.10  1408.10
+      MISC    11/13/2023      2.12 *           Google storage          1405.98  1405.98
+      HOME    11/13/2023     92.55 *           phone                   1313.43  1313.43
+      PAY     11/15/2023           *   1500.00 paycheck                2813.43  2813.43
+      MISC    11/15/2023    230.00 *           Public Storage          2583.43  2583.43
+      HOME    11/16/2023    245.02 *           electric                2338.41  2338.41
+      HOME    11/20/2023    143.16 *           fiber Internet          2195.25  2195.25
+      MISC    11/20/2023    500.00 *           credit card             1695.25  1695.25
+      CAR     11/23/2023    534.23 *           car payment             1161.02  1161.02
+      FUN     11/26/2023      8.65 *           Hulu                    1152.37  1152.37
+      CAR     11/30/2023    265.34             car insurance            887.03  1152.37
+
+      --
+      &stats
+          All ::   Payment:    $4,126.09    Deposit:    $3,000.00
+      --
+      &stats All
+          All ::   Payment:    $4,126.09    Deposit:    $3,000.00
+      --
+      &stats Example
+      Example ::   Payment:    $4,126.09    Deposit:    $3,000.00
+      --
+      &stats All PAY EAT TACOS
+                     Payment       Deposit
+          All |    $4,126.09     $3,000.00
+          PAY |        $0.00     $3,000.00
+          EAT |      $263.19         $0.00
+        TACOS |      $128.47         $0.00
+
+      --
+      &stats -f
+      All:
+      $4,126.09 Payment, $3,000.00 Deposit
+      $2,013.12 start, $887.03 finish, 56% decrease
+      Payment   min / avg / max =     $2.12 /   $137.54 /   $745.00
+      Deposit   min / avg / max = $1,500.00 / $1,500.00 / $1,500.00
+
+      --
+      &stats -f FUN
+      FUN:
+      $225.01 Payment, $0.00 Deposit
+      Payment   min / avg / max =     $8.65 /    $56.25 /   $121.10
+      Deposit   min / avg / max =     $0.00 /     $0.00 /     $0.00
+
+      --
+      &stats -f All PAY EAT TACOS
+      All:
+      $4,126.09 Payment, $3,000.00 Deposit
+      $2,013.12 start, $887.03 finish, 56% decrease
+      Payment   min / avg / max =     $2.12 /   $137.54 /   $745.00
+      Deposit   min / avg / max = $1,500.00 / $1,500.00 / $1,500.00
+
+      PAY:
+      $0.00 Payment, $3,000.00 Deposit
+      Payment   min / avg / max =     $0.00 /     $0.00 /     $0.00
+      Deposit   min / avg / max = $1,500.00 / $1,500.00 / $1,500.00
+
+      EAT:
+      $263.19 Payment, $0.00 Deposit
+      Payment   min / avg / max =    $12.01 /    $26.32 /    $48.77
+      Deposit   min / avg / max =     $0.00 /     $0.00 /     $0.00
+
+      TACOS:
+      $128.47 Payment, $0.00 Deposit
+      Payment   min / avg / max =    $36.29 /    $42.82 /    $48.77
+      Deposit   min / avg / max =     $0.00 /     $0.00 /     $0.00
+

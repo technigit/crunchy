@@ -3,7 +3,7 @@ Help Topic: Usage
 
    Usage: crunchy.py [<options>] [<files>] [-h [<topic>] | --help [<topic>] | ... ]
 
-   Help topics: usage, data-format, directives, files, map, options, read, set, testing
+   Help topics: usage, categories, data-format, directives, files, map, options, read, set, stats, testing
 
    For more information, use -h or &help followed by one of the help topics listed above.
 

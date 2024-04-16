@@ -1,0 +1,75 @@
+--
+Help Topic: Categories
+
+   By assigning a category to each transactional entry, a filtered set of entries related to a topic can be analyzed.  For example, a category could be defined for eating out, while another might be defined for trips to the grocery store.  Additionally, an entry can have more than one category, so EAT could be a category for eating out in general, while TACOS would be a category just for eating at taco restaurants.
+
+   The &stats directive can be used to display category information.
+
+   See also:  &help stats
+
+   Example:
+
+      &init 2013.12
+      &set catfield 0
+      &set decfield 2
+      &set clrfield 3
+      &set incfield 4
+          Cat<9     Date|10   Payment8  Clear1   Deposit8  Description<22
+           BLOG  11/01/2023      10.45       *          -  Wordpress hosting
+      TACOS EAT  11/01/2023      48.77       *          -  Torchy's
+            PAY  11/01/2023          -       *    1500.00  paycheck
+           RENT  11/01/2023     745.00       *          -  apartment
+         WB EAT  11/02/2023      16.29       *          -  Whataburger
+            FUN  11/03/2023      21.54       *          -  Netflix
+            EAT  11/03/2023      21.31       *          -  Portillo's
+            EAT  11/05/2023      12.01       *          -  McDonald's
+      TACOS EAT  11/07/2023      36.29       *          -  Taco Cabana
+            EAT  11/08/2023      14.86       *          -  Wendy's
+      TACOS EAT  11/09/2023      43.41       *          -  Fuzzy's Taco Shop
+         WB EAT  11/11/2023      12.61       *          -  Whataburger
+            FUN  11/12/2023     121.10       *          -  Amazon
+            PAY  11/15/2023          -       -    1500.00  paycheck
+      &print
+      &stats Total
+      &print
+      &stats PAY
+      &print
+      &stats PAY RENT EAT BLOG FUN Total TACOS WB
+
+   Output:
+
+      <i> Initializing balance to $2,013.12.
+      <i> Setting category field to 0.
+      <i> Setting decrement field to 2.
+      <i> Setting clear field to 3.
+      <i> Setting increment field to 4.
+      Cat          Date     Payment C  Deposit Description
+      BLOG      11/01/2023    10.45 *          Wordpress hosting       2002.67  2002.67
+      TACOS EAT 11/01/2023    48.77 *          Torchy's                1953.90  1953.90
+      PAY       11/01/2023          *  1500.00 paycheck                3453.90  3453.90
+      RENT      11/01/2023   745.00 *          apartment               2708.90  2708.90
+      WB EAT    11/02/2023    16.29 *          Whataburger             2692.61  2692.61
+      FUN       11/03/2023    21.54 *          Netflix                 2671.07  2671.07
+      EAT       11/03/2023    21.31 *          Portillo's              2649.76  2649.76
+      EAT       11/05/2023    12.01 *          McDonald's              2637.75  2637.75
+      TACOS EAT 11/07/2023    36.29 *          Taco Cabana             2601.46  2601.46
+      EAT       11/08/2023    14.86 *          Wendy's                 2586.60  2586.60
+      TACOS EAT 11/09/2023    43.41 *          Fuzzy's Taco Shop       2543.19  2543.19
+      WB EAT    11/11/2023    12.61 *          Whataburger             2530.58  2530.58
+      FUN       11/12/2023   121.10 *          Amazon                  2409.48  2409.48
+      PAY       11/15/2023             1500.00 paycheck                3909.48  2409.48
+
+          Total ::  Payment:   $1,103.64   Deposit:   $3,000.00
+
+            PAY ::  Payment:       $0.00   Deposit:   $3,000.00
+
+                      Payment      Deposit
+            PAY |       $0.00    $3,000.00
+           RENT |     $745.00        $0.00
+            EAT |     $205.55        $0.00
+           BLOG |      $10.45        $0.00
+            FUN |     $142.64        $0.00
+          Total |   $1,103.64    $3,000.00
+          TACOS |     $128.47        $0.00
+             WB |      $28.90        $0.00
+

@@ -23,7 +23,7 @@ class ANSI():
 # global variables
 ####################
 
-version_ = 'v0.0.12'
+version_ = 'v0.0.13'
 
 # &read recursion depth limit
 max_read_depth_ = 5
@@ -40,6 +40,10 @@ header_mode_ = False
 # executing &read in inline or sandbox mode
 read_inline_ = False
 
+# min-max boundaries for stats
+stats_min = 0.0
+stats_max = 9999999.0
+
 # command-line options
 ignore_stop_ = False
 ignore_stop_reset_ = False
@@ -51,7 +55,7 @@ test_force_verbose_ = False
 def initGlobals():
     global running_, comment_mode_, infomsg_, output_, goto_, read_path_
     global testing_, test_filename_, test_f_, test_pause_, test_verbose_, test_pass_, test_fail_
-    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_
+    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_, statvalues_
     global elements_, headers_, justify_, width_, map_
 
     running_ = [True]
@@ -76,6 +80,7 @@ def initGlobals():
     incfield_ = [None]
     decfield_ = [None]
     catvalues_ = {}
+    statvalues_ = {}
 
     elements_ = None
     headers_ = [None]
@@ -339,19 +344,7 @@ def parseDirective(line):
 
     ####################
 
-    if cmd == 'cat':
-        if not argtrim:
-            prettyCat('All')
-        elif not ' ' in argtrim:
-            prettyCat(argtrim)
-        else:
-            prettyCatHeader()
-            for category in argtrim.split():
-                prettyCat(category, True)
-
-    ####################
-
-    elif cmd == 'cd':
+    if cmd == 'cd':
         read_path_[-1] = argtrim
         if read_path_[-1]:
             infoMessage("Setting current working directory to '{0}'.".format(read_path_[-1]))
@@ -370,9 +363,18 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'header':
+        if argtrim:
+            global elements_
+            elements_ = getElements(argtrim)
+            headers_[-1] = makeHeaders()
         if headers_[-1]:
             header_mode_ = True
-            parseLine('  '.join(headers_[-1]))
+            print_header = True
+            for option in options:
+                if option in ['-q', '--quiet']:
+                    print_header = False
+            if print_header:
+                parseLine('  '.join(headers_[-1]))
         else:
             errorMessage('No header information found.')
 
@@ -387,6 +389,7 @@ def parseDirective(line):
         if argtrim:
             fulbal_[-1] = float(argtrim)
             clrbal_[-1] = fulbal_[-1]
+            statvalues_['init'] = fulbal_[-1]
             infoMessage('Initializing balance to {0}.'.format(currency(fulbal_[-1])))
         else:
             infoMessage('Usage: &init <float>')
@@ -424,6 +427,14 @@ def parseDirective(line):
 
     elif cmd == 'print':
         done = False
+        if argtrim and argtrim.startswith('"'):
+            # leading double quote
+            argtrim = argtrim[1:]
+            arg = argtrim
+            if argtrim.endswith('"'):
+                # optional matching double quote
+                argtrim = argtrim[:-1]
+                arg = argtrim
         for option in options:
             if option in ['-f', '--force']:
                 # force print
@@ -514,6 +525,34 @@ def parseDirective(line):
 
     ####################
 
+    elif cmd == 'stats':
+        simple = True
+        for option in options:
+            if option in ['-f', '--full']:
+                simple = False
+            else:
+                unrecognizedOption(option)
+        if simple:
+            if not argtrim:
+                simpleStats('All')
+            elif not ' ' in argtrim:
+                simpleStats(argtrim)
+            else:
+                simpleStatsHeader()
+                for category in argtrim.split():
+                    simpleStats(category, True)
+                print()
+        else:
+            if not argtrim:
+                moreStats('All')
+            elif not ' ' in argtrim:
+                moreStats(argtrim)
+            else:
+                for category in argtrim.split():
+                    moreStats(category)
+
+    ####################
+
     elif cmd == 'stop':
         if not ignore_stop_:
             if testing_[-1]:
@@ -591,7 +630,7 @@ def unrecognizedOption(option):
 
 ####################
 
-def prettyCatHeader():
+def simpleStatsHeader():
     cat_header_width = width_[-1][catfield_[-1]]
     dec_header = headers_[-1][decfield_[-1]]
     dec_header_width = width_[-1][decfield_[-1]]
@@ -605,8 +644,7 @@ def prettyCatHeader():
 
 ####################
 
-def prettyCat(category, use_header = False):
-    global incfield_, decfield_
+def simpleStats(category, use_header = False):
     catpay_key = category + 'payamt'
     catdep_key = category + 'depamt'
     if not catpay_key in catvalues_ or not catdep_key in catvalues_:
@@ -633,6 +671,59 @@ def prettyCat(category, use_header = False):
             rjustify(catpay_currency, dec_header_width + 3),
             rjustify(catdep_currency, inc_header_width + 3))
         )
+
+####################
+
+def moreStats(category):
+    min_in_key = category + 'min-in'
+    max_in_key = category + 'max-in'
+    num_in_key = category + 'num-in'
+    sum_in_key = category + 'sum-in'
+    min_out_key = category + 'min-out'
+    max_out_key = category + 'max-out'
+    num_out_key = category + 'num-out'
+    sum_out_key = category + 'sum-out'
+    general = False
+    if not min_in_key in statvalues_ or not max_in_key in statvalues_ or not num_in_key in statvalues_ or not sum_in_key in statvalues_ or not min_out_key in statvalues_ or not max_out_key in statvalues_ or not num_out_key in statvalues_ or not sum_out_key in statvalues_:
+        general = True
+        min_in_key = 'min-in'
+        max_in_key = 'max-in'
+        num_in_key = 'num-in'
+        sum_in_key = 'sum-in'
+        min_out_key = 'min-out'
+        max_out_key = 'max-out'
+        num_out_key = 'num-out'
+        sum_out_key = 'sum-out'
+    start = statvalues_['init']
+    finish = fulbal_[-1]
+    change = round(100 * (finish - start) / start)
+    change_str = 'decrease' if change < 0 else 'increase'
+    change_str = 'change' if change == 0 else change_str
+    min_in = statvalues_[min_in_key] if statvalues_[min_in_key] != stats_max else 0
+    num_in = statvalues_[num_in_key]
+    sum_in = statvalues_[sum_in_key]
+    avg_in = sum_in / num_in if num_in > 0 else 0
+    max_in = statvalues_[max_in_key]
+    header_in = headers_[-1][incfield_[-1]]
+    width_in = width_[-1][incfield_[-1]]
+    min_out = statvalues_[min_out_key] if statvalues_[min_out_key] != stats_max else 0
+    num_out = statvalues_[num_out_key]
+    sum_out = statvalues_[sum_out_key]
+    avg_out = sum_out / num_out if num_out > 0 else 0
+    max_out = statvalues_[max_out_key]
+    header_out = headers_[-1][decfield_[-1]]
+    width_out = width_[-1][decfield_[-1]]
+    print(category + ':')
+    print('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
+    if general:
+        print('{0} start, {1} finish, {2}% {3}'.format(currency(start), currency(finish), abs(change), change_str))
+    print('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_out, width_out),
+        rjustify(currency(min_out), width_out), rjustify(currency(avg_out), width_out), rjustify(currency(max_out), width_out))
+    )
+    print('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_in, width_in),
+        rjustify(currency(min_in), width_in), rjustify(currency(avg_in), width_in), rjustify(currency(max_in), width_in))
+    )
+    print()
 
 ################################################################################
 
@@ -724,22 +815,87 @@ def parseLine(line):
         else:
             errorMessage('Increment field is not set.')
         try:
+            # calculate running balance
+            fulbal_[-1] -= float(payamt)
+            fulbal_[-1] += float(depamt)
+
+            # record general category values
             if not 'payamt' in catvalues_: catvalues_['payamt'] = 0.0
             catvalues_['payamt'] += float(payamt)
             if not 'depamt' in catvalues_: catvalues_['depamt'] = 0.0
             catvalues_['depamt'] += float(depamt)
-            fulbal_[-1] -= float(payamt)
-            fulbal_[-1] += float(depamt)
-            if elements_[clrfield_[-1]] != ' ':
+
+            # record general stats values
+            if not 'min-in' in statvalues_: statvalues_['min-in'] = stats_max
+            if float(depamt) < statvalues_['min-in'] and float(payamt) == 0.0:
+                statvalues_['min-in'] = float(depamt)
+            if not 'max-in' in statvalues_: statvalues_['max-in'] = stats_min
+            if float(depamt) > statvalues_['max-in']:
+                statvalues_['max-in'] = float(depamt)
+            if not 'num-in' in statvalues_: statvalues_['num-in'] = 0
+            if not 'sum-in' in statvalues_: statvalues_['sum-in'] = 0
+            if float(depamt) > 0:
+                statvalues_['num-in'] += 1
+                statvalues_['sum-in'] += float(depamt)
+            if not 'min-out' in statvalues_: statvalues_['min-out'] = stats_max
+            if float(payamt) < statvalues_['min-out'] and float(depamt) == 0.0:
+                statvalues_['min-out'] = float(payamt)
+            if not 'max-out' in statvalues_: statvalues_['max-out'] = stats_min
+            if float(payamt) > statvalues_['max-out']:
+                statvalues_['max-out'] = float(payamt)
+            if not 'num-out' in statvalues_: statvalues_['num-out'] = 0
+            if not 'sum-out' in statvalues_: statvalues_['sum-out'] = 0
+            if float(payamt) > 0:
+                statvalues_['num-out'] += 1
+                statvalues_['sum-out'] += float(payamt)
+
+            # record specific category values
+            if clrfield_[-1] != None and elements_[clrfield_[-1]] != ' ':
                 clrbal_[-1] -= float(payamt)
                 clrbal_[-1] += float(depamt)
             if catfield_[-1] != None and elements_[catfield_[-1]] != ' ':
-                catpay_key = elements_[catfield_[-1]] + 'payamt'
-                catdep_key = elements_[catfield_[-1]] + 'depamt'
-                if not catpay_key in catvalues_: catvalues_[catpay_key] = 0.0
-                catvalues_[catpay_key] += float(payamt)
-                if not catdep_key in catvalues_: catvalues_[catdep_key] = 0.0
-                catvalues_[catdep_key] += float(depamt)
+                for catkey in elements_[catfield_[-1]].split():
+                    catpay_key = catkey + 'payamt'
+                    catdep_key = catkey + 'depamt'
+                    if not catpay_key in catvalues_: catvalues_[catpay_key] = 0.0
+                    catvalues_[catpay_key] += float(payamt)
+                    if not catdep_key in catvalues_: catvalues_[catdep_key] = 0.0
+                    catvalues_[catdep_key] += float(depamt)
+
+            # record specific stats values
+            if catfield_[-1] != None and elements_[catfield_[-1]] != ' ':
+                for statkey in elements_[catfield_[-1]].split():
+                    min_in_key = statkey + 'min-in'
+                    max_in_key = statkey + 'max-in'
+                    num_in_key = statkey + 'num-in'
+                    sum_in_key = statkey + 'sum-in'
+                    if not min_in_key in statvalues_: statvalues_[min_in_key] = 9999999.0
+                    if float(depamt) < statvalues_[min_in_key] and float(payamt) == 0.0:
+                        statvalues_[min_in_key] = float(depamt)
+                    if not max_in_key in statvalues_: statvalues_[max_in_key] = 0.0
+                    if float(depamt) > statvalues_[max_in_key]:
+                        statvalues_[max_in_key] = float(depamt)
+                    if not num_in_key in statvalues_: statvalues_[num_in_key] = 0
+                    if not sum_in_key in statvalues_: statvalues_[sum_in_key] = 0
+                    if float(depamt) > 0:
+                        statvalues_[num_in_key] += 1
+                        statvalues_[sum_in_key] += float(depamt)
+                    min_out_key = statkey + 'min-out'
+                    max_out_key = statkey + 'max-out'
+                    num_out_key = statkey + 'num-out'
+                    sum_out_key = statkey + 'sum-out'
+                    if not min_out_key in statvalues_: statvalues_[min_out_key] = 9999999.0
+                    if float(payamt) < statvalues_[min_out_key] and float(depamt) == 0.0:
+                        statvalues_[min_out_key] = float(payamt)
+                    if not max_out_key in statvalues_: statvalues_[max_out_key] = 0.0
+                    if float(payamt) > statvalues_[max_out_key]:
+                        statvalues_[max_out_key] = float(payamt)
+                    if not num_out_key in statvalues_: statvalues_[num_out_key] = 0
+                    if not sum_out_key in statvalues_: statvalues_[sum_out_key] = 0
+                    if float(payamt) > 0:
+                        statvalues_[num_out_key] += 1
+                        statvalues_[sum_out_key] += float(payamt)
+
         except ValueError:
             pass
         if output_[-1]:

@@ -17,9 +17,17 @@ Help Topic: Directives
          skip:
          &print This line should be displayed.
 
-   &header
+   &header [<options>] [<field name>[<alignment>]<width> ...]
 
-      Display the current headers.
+      Define/redefine the headers and/or display the current headers.
+
+      Options:
+
+         -q | --quiet
+
+         Do not display the header, regardless of output mode.
+
+      See also:  &help data-format
 
    &help [<topic>]
 
@@ -39,9 +47,9 @@ Help Topic: Directives
 
       Enable or disable the output, but otherwise process the data as usual.
 
-   &print [<options>] [<text>]
+   &print [<options>] ["][<text>]["]
 
-      Display a line of content.
+      Display a line of content.  Optionally, the content can be enclosed with double quotes, but the matching double quote at the end is not required.  In all cases, the content is treated as a string literal (which may contain double quotes).
 
       Options:
 
@@ -71,7 +79,7 @@ Help Topic: Directives
 
       Specify which field will be the category field.
 
-      See also:  &help set
+      See also:  &help set, &help categories
 
    &set clrfield <int>
 
@@ -90,4 +98,16 @@ Help Topic: Directives
       Specify which field will be the increment field (e.g., deposits).
 
       See also:  &help set
+
+   &stats [<options>] [<categories>]
+
+      Display incoming and outgoing totals, along with other statistics such as minimums, averages, and maximums.
+
+      Options:
+
+         -f | --full
+
+            Display more detailed information.
+
+      See also:  &help categories, &help stats
 
