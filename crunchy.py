@@ -1,29 +1,22 @@
 #!/usr/bin/env python3
 
-'''
- * Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
- *
- * This source code is licensed under the MIT license found in the
- * LICENSE file in the root directory of this source tree.
- *
-'''
-
 import fileinput, re, shutil, sys, textwrap, traceback
 from os.path import dirname, exists, realpath
 
-# class methods to set text colors
-class ANSI():
-    def set_display_attribute(code): return "\33[{attr}m".format(attr = code)
-    FG_DEFAULT = set_display_attribute(0)
-    FG_RED = set_display_attribute(31)
-    FG_YELLOW = set_display_attribute(33)
-    FG_GREEN = set_display_attribute(32)
+import core, core_functions
+ljustify = core_functions.ljustify
+cjustify = core_functions.cjustify
+rjustify = core_functions.rjustify
+currency = core_functions.currency
+printLine = core_functions.printLine
+infoMessage = core_functions.infoMessage
+errorMessage = core_functions.errorMessage
 
 ####################
 # global variables
 ####################
 
-version_ = 'v0.0.13'
+version_ = 'v0.0.14'
 
 # &read recursion depth limit
 max_read_depth_ = 5
@@ -53,25 +46,7 @@ test_force_verbose_ = False
 
 # these global variables can be reset
 def initGlobals():
-    global running_, comment_mode_, infomsg_, output_, goto_, read_path_
-    global testing_, test_filename_, test_f_, test_pause_, test_verbose_, test_pass_, test_fail_
     global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_, statvalues_
-    global elements_, headers_, justify_, width_, map_
-
-    running_ = [True]
-    comment_mode_ = [0]
-    infomsg_ = [True]
-    output_ = [True]
-    goto_ = [None]
-    read_path_ = [None]
-
-    testing_ = [False]
-    test_filename_ = [None]
-    test_f_ = [None]
-    test_pause_ = [False]
-    test_verbose_ = [False]
-    test_pass_ = [0]
-    test_fail_ = [0]
 
     fulbal_ = [0.0]
     clrbal_ = [0.0]
@@ -81,12 +56,6 @@ def initGlobals():
     decfield_ = [None]
     catvalues_ = {}
     statvalues_ = {}
-
-    elements_ = None
-    headers_ = [None]
-    justify_ = [None]
-    width_ = [None]
-    map_ = [None]
 
 ####################
 # functions
@@ -107,43 +76,41 @@ To exit interactive mode, use Ctrl-D
 ################################################################################
 
 def skipLine(line):
-    global comment_mode_, goto_
-    if comment_mode_[-1] == -1: comment_mode_[-1] = 0
-    if re.search('^\s*\/\*', line): comment_mode_[-1] = 1
-    if re.search('\*\/\s*$', line): comment_mode_[-1] = -1
-    if comment_mode_[-1] != 0: return True
+    if core.main.comment_mode_[-1] == -1: core.main.comment_mode_[-1] = 0
+    if re.search('^\s*\/\*', line): core.main.comment_mode_[-1] = 1
+    if re.search('\*\/\s*$', line): core.main.comment_mode_[-1] = -1
+    if core.main.comment_mode_[-1] != 0: return True
     if re.search('^\s*\#', line): return True
     if re.search('^\s*\/\/', line): return True
     if re.search('^[\s-]*$', line): return True
     m = re.search('^\s*(\S*)\:\s*$', line)
     if m:
-        if m.group(1) == goto_[-1]:
-            goto_[-1] = None
+        if m.group(1) == core.main.goto_[-1]:
+            core.main.goto_[-1] = None
         return True
-    if goto_[-1]: return True
+    if core.main.goto_[-1]: return True
     return False
 
 ####################
 
 def makeHeaders():
-    global elements_, width_, justify_
-    width_[-1] = [None] * len(elements_)
-    justify_[-1] = [None] * len(elements_)
-    for i, element in enumerate(elements_):
+    core.main.width_[-1] = [None] * len(core.main.elements_)
+    core.main.justify_[-1] = [None] * len(core.main.elements_)
+    for i, element in enumerate(core.main.elements_):
         element = element.strip()
         m = re.search('^.*\D(\d*)$', element)
         if m:
-            width_[-1][i] = int(m.group(1))
+            core.main.width_[-1][i] = int(m.group(1))
             element = re.search('^(.*\D)\d*$', element).group(1)
-            justify_[-1][i] = '>'
+            core.main.justify_[-1][i] = '>'
             if re.search('\<$', element):
-                justify_[-1][i] = '<'
+                core.main.justify_[-1][i] = '<'
             if re.search('\|$', element):
-                justify_[-1][i] = '|'
-            elements_[i] = re.sub('[\<\|\>]$', '', element)
+                core.main.justify_[-1][i] = '|'
+            core.main.elements_[i] = re.sub('[\<\|\>]$', '', element)
         else:
             return None
-    return elements_
+    return core.main.elements_
 
 ####################
 
@@ -151,176 +118,88 @@ def getElements(line):
     delim = '~'
     line = re.sub('^\s*', '', line)
     line = re.sub('\s\s(\s*)', delim, line)
-    elements_ = line.split(delim)
-    for i, element in enumerate(elements_):
+    core.main.elements_ = line.split(delim)
+    for i, element in enumerate(core.main.elements_):
         if element == '-':
-            elements_[i] = ' '
-    return elements_
+            core.main.elements_[i] = ' '
+    return core.main.elements_
 
 ################################################################################
 
-def ljustify(str, width):
-    return str.ljust(width)[:width]
-
-####################
-
-def cjustify(str, width):
-    return str.center(width)[:width]
-
-####################
-
-def rjustify(str, width):
-    return str.rjust(width)[:width]
-
-####################
-
-def currency(num):
-    return '${:,.2f}'.format(num)
-
-################################################################################
-
-def infoMessage(message):
-    if infomsg_[-1] and output_[-1]: printLine('<i> ' + message)
-
-####################
-
-def errorMessage(message):
-    printLine(ANSI.FG_RED + '<E> ' + message + ANSI.FG_DEFAULT, sys.stderr)
-
-################################################################################
-
-def testMessage(message, verbose = False):
-    global test_verbose_
-    if test_verbose_[-1] or verbose: print(ANSI.FG_YELLOW + '<T> ' + message + ANSI.FG_DEFAULT)
-
-####################
-
-def testStop(verbose = False):
-    global testing_, test_filename_, test_f_, test_pause_, test_pass_, test_fail_
-    testing_[-1] = False
-    test_pause_[-1] = False
-    if test_f_[-1] != None:
-        eof_test = test_f_[-1].readline()
-        if eof_test != '':
-            testMessage('The test was unexpectedly interrupted.', True)
-            while eof_test != '':
-                test_fail_[-1] += 1
-                eof_test = test_f_[-1].readline()
-        test_f_[-1].close()
-    test_f_[-1] = None
-    testMessage('Test stopped.', verbose)
-    total = test_pass_[-1] + test_fail_[-1]
-    s = 's' if total != 1 else ''
-    tested = str(total) + ' line' + s + ' tested: '
-    if test_pass_[-1] > 0:
-        passed = ANSI.FG_GREEN + str(test_pass_[-1]) + ' passed' + ANSI.FG_YELLOW + ' :: '
-    else:
-        passed = str(test_pass_[-1]) + ' passed :: '
-    if test_fail_[-1] > 0:
-        failed = ANSI.FG_RED + str(test_fail_[-1]) + ' failed' + ANSI.FG_YELLOW + ' :: '
-    else:
-        failed = str(test_fail_[-1]) + ' failed :: '
-    testfile = test_filename_[-1]
-    text_offset = 0 if total < 1000 else 2 # make room for big numbers
-    testMessage(rjustify(tested, 18 + text_offset) + rjustify(passed, 24 + text_offset) + failed + testfile, True)
-    test_filename_[-1] = ''
-
-################################################################################
-
-def printLine(line = '', stdio=sys.stdout):
-    global testing_, test_filename_, test_f_, test_pass_, test_fail_
-    if testing_[-1]:
-        try:
-            if test_f_[-1] == None:
-                read_source = test_filename_[-1]
-                if read_path_[-1]:
-                    read_source = read_path_[-1] + '/' + test_filename_[-1]
-                if exists(read_source):
-                    test_f_[-1] = open(read_source, 'r')
-                else:
-                    testMessage("File '{0}' does not exist; stopping test.".format(read_source), True)
-                    testStop(True)
-            if test_f_[-1] != None:
-                line = re.sub('\n', '', line)
-                test_line = test_f_[-1].readline()
-                if test_line != '':
-                    test_line = re.sub('\n', '', test_line)
-                    if line == test_line:
-                        testMessage('Passed: ' + line)
-                        test_pass_[-1] += 1
-                    else:
-                        testMessage("Expected: '{0}'".format(test_line), True)
-                        testMessage("Received: '{0}'".format(line), True)
-                        test_fail_[-1] += 1
-                else:
-                    testMessage('Unexpected EOF reached; stopping test.', True)
-                    testStop(True)
-        except:
-            testMessage('Unexpected error: ' + line, True)
-            traceback.print_exc()
-    if not testing_[-1]:
-        print(line, file=stdio)
-
-################################################################################
-
-def pushGlobals(listnames):
-    for listname in listnames:
-        if listname in globals():
-            list = globals()[listname]
+def pushLists(lists):
+    for list in lists:
+        if list != None:
             list.append(list[-1])
-        else:
-            errorMessage("pushGlobals: '{0}' not found in globals.".format(listname))
 
 ################################################################################
 
-def popGlobals(listnames):
+def popLists(lists):
     global read_inline_
-    for listname in listnames:
-        if listname in globals():
-            list = globals()[listname]
-            if len(list) > 1:
-                if not read_inline_:
-                    list.pop()
-                else:
-                    copy = list[-1]
-                    list.pop()
-                    list[-1] = copy
-        else:
-            errorMessage("popGlobals: '{0}' not found in globals.".format(listname))
+    for list in lists:
+        if list != None and len(list) > 1:
+            if not read_inline_:
+                list.pop()
+            else:
+                copy = list[-1]
+                list.pop()
+                list[-1] = copy
 
 ################################################################################
 
 def pushEnv():
-    pushGlobals(['running_', 'comment_mode_', 'infomsg_', 'output_', 'goto_', 'read_path_'])
-    pushGlobals(['testing_', 'test_filename_', 'test_f_', 'test_pause_', 'test_verbose_', 'test_pass_', 'test_fail_'])
-    pushGlobals(['headers_', 'justify_', 'width_', 'map_'])
+    pushLists([
+        core.main.running_,
+        core.main.comment_mode_,
+        core.main.infomsg_,
+        core.main.output_,
+        core.main.goto_,
+        core.main.read_path_,
+        core.main.elements_,
+        core.main.headers_,
+        core.main.justify_,
+        core.main.width_,
+        core.main.map_
+    ])
+    pushLists([
+        core.testing.testing_,
+        core.testing.test_filename_,
+        core.testing.test_f_,
+        core.testing.test_pause_,
+        core.testing.test_verbose_,
+        core.testing.test_pass_,
+        core.testing.test_fail_
+    ])
 
 ################################################################################
 
 def popEnv():
-    global read_inline_
-    popGlobals(['running_', 'comment_mode_', 'infomsg_', 'output_', 'goto_', 'read_path_'])
-    popGlobals(['testing_', 'test_filename_', 'test_f_', 'test_pause_', 'test_verbose_', 'test_pass_', 'test_fail_'])
-    popGlobals(['headers_', 'justify_', 'width_', 'map_'])
-
-################################################################################
-
-def debugList(listname, list = []):
-    if listname in globals():
-        list = globals()[listname]
-    print(listname + ':  ', end='')
-    for i in list:
-        print('`' + str(i), end='')
-    print('')
+    popLists([
+        core.main.running_,
+        core.main.comment_mode_,
+        core.main.infomsg_,
+        core.main.output_,
+        core.main.goto_,
+        core.main.read_path_,
+        core.main.elements_,
+        core.main.headers_,
+        core.main.justify_,
+        core.main.width_,
+        core.main.map_
+    ])
+    pushLists([
+        core.testing.testing_,
+        core.testing.test_filename_,
+        core.testing.test_f_,
+        core.testing.test_pause_,
+        core.testing.test_verbose_,
+        core.testing.test_pass_,
+        core.testing.test_fail_
+    ])
 
 ################################################################################
 
 def parseDirective(line):
-    global running_, infomsg_, output_, goto_, max_read_depth_, read_path_
-    global testing_, test_filename_, test_pause, test_verbose_, test_pass_, test_fail_
-    global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
-    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, map_
-    global headers_, header_mode_
+    global header_mode_
     arg = None
     argtrim = None
     options = []
@@ -345,18 +224,18 @@ def parseDirective(line):
     ####################
 
     if cmd == 'cd':
-        read_path_[-1] = argtrim
-        if read_path_[-1]:
-            infoMessage("Setting current working directory to '{0}'.".format(read_path_[-1]))
+        core.main.read_path_[-1] = argtrim
+        if core.main.read_path_[-1]:
+            infoMessage("Setting current working directory to '{0}'.".format(core.main.read_path_[-1]))
         else:
             infoMessage('Resetting current working directory.')
 
     ####################
 
     elif cmd == 'goto':
-        goto_[-1] = argtrim
+        core.main.goto_[-1] = argtrim
         if argtrim:
-            infoMessage("Skipping to '{0}'.".format(goto_[-1]))
+            infoMessage("Skipping to '{0}'.".format(core.main.goto_[-1]))
         else:
             infoMessage('Usage: &goto <label>')
 
@@ -364,17 +243,16 @@ def parseDirective(line):
 
     elif cmd == 'header':
         if argtrim:
-            global elements_
-            elements_ = getElements(argtrim)
-            headers_[-1] = makeHeaders()
-        if headers_[-1]:
+            core.main.elements_ = getElements(argtrim)
+            core.main.headers_[-1] = makeHeaders()
+        if core.main.headers_[-1]:
             header_mode_ = True
             print_header = True
             for option in options:
                 if option in ['-q', '--quiet']:
                     print_header = False
             if print_header:
-                parseLine('  '.join(headers_[-1]))
+                parseLine('  '.join(core.main.headers_[-1]))
         else:
             errorMessage('No header information found.')
 
@@ -400,10 +278,10 @@ def parseDirective(line):
         show_usage = False
         if argtrim:
             premap = getElements(argtrim)
-            map_[-1] = [None] * len(premap)
+            core.main.map_[-1] = [None] * len(premap)
             try:
                 for m, element in enumerate(premap):
-                    map_[-1][int(premap[m]) - 1] = m + 1
+                    core.main.map_[-1][int(premap[m]) - 1] = m + 1
                 infoMessage('Fields were remapped.')
             except ValueError:
                 show_usage = True
@@ -415,11 +293,11 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'output' and arg == 'on':
-        output_[-1] = True
+        core.main.output_[-1] = True
         infoMessage('Output mode is on.')
     elif cmd == 'output' and arg == 'off':
         infoMessage('Output mode is off.')
-        output_[-1] = False
+        core.main.output_[-1] = False
     elif cmd =='output':
         infoMessage('Usage: &output on|off')
 
@@ -443,7 +321,7 @@ def parseDirective(line):
             else:
                 unrecognizedOption(option)
         if not done:
-            if output_[-1]:
+            if core.main.output_[-1]:
                 printLine(arg) if arg is not None else printLine()
             else:
                 pass
@@ -452,7 +330,7 @@ def parseDirective(line):
 
     elif cmd == 'read':
         if argtrim:
-            global read_inline_
+            global max_read_depth_, read_inline_
             for option in options:
                 if option in ['-i', '--inline']:
                     read_inline_ = True
@@ -461,8 +339,8 @@ def parseDirective(line):
                 else:
                     unrecognizedOption(option)
             read_source = argtrim
-            if read_path_[-1]:
-                read_source = read_path_[-1] + '/' + argtrim
+            if core.main.read_path_[-1]:
+                read_source = core.main.read_path_[-1] + '/' + argtrim
             if max_read_depth_ > 0:
                 max_read_depth_ = max_read_depth_ - 1
                 infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if read_inline_ else ''))
@@ -473,7 +351,7 @@ def parseDirective(line):
                         for read_line in f:
                             read_line = re.sub('\n', '', read_line)
                             if not skipLine(read_line): parseLine(read_line)
-                            if not running_[-1]: break
+                            if not core.main.running_[-1]: break
                     except IndexError:
                         errorMessage('Badly formed data: ' + read_line)
                     except ValueError:
@@ -483,8 +361,8 @@ def parseDirective(line):
                         traceback.print_exc()
                     finally:
                         f.close()
-                        if testing_[-1]:
-                            testStop()
+                        if core.testing.testing_[-1]:
+                            core.testing.testStop()
                         popEnv()
                         infoMessage('Finished{0} reading file {1}.'.format(' inline' if read_inline_ else '', read_source))
                 else:
@@ -554,68 +432,68 @@ def parseDirective(line):
     ####################
 
     elif cmd == 'stop':
-        if not ignore_stop_:
-            if testing_[-1]:
-                testStop()
-            running_[-1] = False
-        if ignore_stop_reset_:
-            if testing_[-1]:
-                testStop()
+        if not core.cli.ignore_stop_:
+            if core.testing.testing_[-1]:
+                core.testing.testStop()
+            core.main.running_[-1] = False
+        if core.cli.ignore_stop_reset_:
+            if core.testing.testing_[-1]:
+                core.testing.testStop()
             initGlobals()
 
     ####################
 
-    elif cmd == 'test' and skip_testing_:
+    elif cmd == 'test' and core.cli.skip_testing_:
         pass
     elif cmd == 'test':
         if argtrim == None:
-            testMessage(cmd + ': parameters required.')
+            core.testing.testMessage('Usage: &{0} <parameters>'.format(cmd))
         elif argtrim.startswith('start'):
-            if not testing_[-1]:
+            if not core.testing.testing_[-1]:
                 m = re.search('^start\s+(\S*)$', argtrim)
                 if m:
-                    test_filename_[-1] = m.group(1)
-                    testing_[-1] = True
-                    test_pause_[-1] = False
-                    test_pass_[-1] = 0
-                    test_fail_[-1] = 0
-                    testMessage("Test started with {0}".format(test_filename_[-1]))
+                    core.testing.test_filename_[-1] = m.group(1)
+                    core.testing.testing_[-1] = True
+                    core.testing.test_pause_[-1] = False
+                    core.testing.test_pass_[-1] = 0
+                    core.testing.test_fail_[-1] = 0
+                    core.testing.testMessage("Test started with {0}".format(core.testing.test_filename_[-1]))
                 else:
-                    testMessage('Test filename not specified.')
+                    core.testing.testMessage('Test filename not specified.')
             else:
-                testMessage('Test is already running ({0}).'.format(test_filename_[-1]))
+                testing.testMessage('Test is already running ({0}).'.format(core.testing.test_filename_[-1]))
         elif argtrim == 'pause':
-            if testing_[-1]:
-                test_pause_[-1] = True
-                testMessage('Test paused.')
+            if core.testing.testing_[-1]:
+                core.testing.test_pause_[-1] = True
+                core.testing.testMessage('Test paused.')
             else:
-                testMessage('No test is currently running.')
+                core.testing.testMessage('No test is currently running.')
         elif argtrim == 'resume':
-            if testing_[-1]:
-                test_pause_[-1] = False
-                testMessage('Test resumed.')
+            if core.testing.testing_[-1]:
+                core.testing.test_pause_[-1] = False
+                core.testing.testMessage('Test resumed.')
             else:
-                testMessage('No test is currently running.')
+                core.testing.testMessage('No test is currently running.')
         elif argtrim == 'verbose':
-            if not test_force_quiet_:
-                test_verbose_[-1] = True
-                testMessage('Test mode set to verbose.')
+            if not core.cli.test_force_quiet_:
+                core.testing.test_verbose_[-1] = True
+                core.testing.testMessage('Test mode set to verbose.')
         elif argtrim == 'quiet':
-            if not test_force_verbose_:
-                test_verbose_[-1] = False
-                testMessage('Test mode set to quiet.')
+            if not core.cli.test_force_verbose_:
+                core.testing.test_verbose_[-1] = False
+                core.testing.testMessage('Test mode set to quiet.')
         elif argtrim == 'stop':
-            testStop()
+            core.testing.testStop()
         else:
-            testMessage(cmd + ': invalid parameter.')
+            core.testing.testMessage(cmd + ': invalid parameter.')
 
     ####################
 
     elif cmd == 'infomsg' and arg == 'on':
-        infomsg_[-1] = True
+        core.main.infomsg_[-1] = True
         infoMessage('Infomsg mode is on.')
     elif cmd == 'infomsg' and arg == 'off':
-        infomsg_[-1] = False
+        core.main.infomsg_[-1] = False
 
     ####################
 
@@ -631,11 +509,11 @@ def unrecognizedOption(option):
 ####################
 
 def simpleStatsHeader():
-    cat_header_width = width_[-1][catfield_[-1]]
-    dec_header = headers_[-1][decfield_[-1]]
-    dec_header_width = width_[-1][decfield_[-1]]
-    inc_header = headers_[-1][incfield_[-1]]
-    inc_header_width = width_[-1][incfield_[-1]]
+    cat_header_width = core.main.width_[-1][catfield_[-1]]
+    dec_header = core.main.headers_[-1][decfield_[-1]]
+    dec_header_width = core.main.width_[-1][decfield_[-1]]
+    inc_header = core.main.headers_[-1][incfield_[-1]]
+    inc_header_width = core.main.width_[-1][incfield_[-1]]
     printLine('{0} {1}  {2}'.format(
         rjustify('', cat_header_width + 2),
         rjustify(dec_header, dec_header_width + 3),
@@ -650,12 +528,12 @@ def simpleStats(category, use_header = False):
     if not catpay_key in catvalues_ or not catdep_key in catvalues_:
         catpay_key = 'payamt'
         catdep_key = 'depamt'
-    cat_header_width = width_[-1][catfield_[-1]]
-    dec_header = headers_[-1][decfield_[-1]]
-    dec_header_width = width_[-1][decfield_[-1]]
+    cat_header_width = core.main.width_[-1][catfield_[-1]]
+    dec_header = core.main.headers_[-1][decfield_[-1]]
+    dec_header_width = core.main.width_[-1][decfield_[-1]]
     catpay_currency = currency(catvalues_[catpay_key])
-    inc_header = headers_[-1][incfield_[-1]]
-    inc_header_width = width_[-1][incfield_[-1]]
+    inc_header = core.main.headers_[-1][incfield_[-1]]
+    inc_header_width = core.main.width_[-1][incfield_[-1]]
     catdep_currency = currency(catvalues_[catdep_key])
     if not use_header:
         printLine('{0} :: {1}: {2}  {3}: {4}'.format(
@@ -704,15 +582,15 @@ def moreStats(category):
     sum_in = statvalues_[sum_in_key]
     avg_in = sum_in / num_in if num_in > 0 else 0
     max_in = statvalues_[max_in_key]
-    header_in = headers_[-1][incfield_[-1]]
-    width_in = width_[-1][incfield_[-1]]
+    header_in = core.main.headers_[-1][incfield_[-1]]
+    width_in = core.main.width_[-1][incfield_[-1]]
     min_out = statvalues_[min_out_key] if statvalues_[min_out_key] != stats_max else 0
     num_out = statvalues_[num_out_key]
     sum_out = statvalues_[sum_out_key]
     avg_out = sum_out / num_out if num_out > 0 else 0
     max_out = statvalues_[max_out_key]
-    header_out = headers_[-1][decfield_[-1]]
-    width_out = width_[-1][decfield_[-1]]
+    header_out = core.main.headers_[-1][decfield_[-1]]
+    width_out = core.main.width_[-1][decfield_[-1]]
     print(category + ':')
     print('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
     if general:
@@ -728,7 +606,6 @@ def moreStats(category):
 ################################################################################
 
 def parseOptions():
-    global ignore_stop_, ignore_stop_reset_, skip_testing_, test_force_quiet_, test_force_verbose_
     if len(sys.argv) == 1:
         return
     input_files = []
@@ -739,10 +616,10 @@ def parseOptions():
             continue
         if option.startswith('-'):
             if option in ['-is', '--ignore-stop']:
-                ignore_stop_ = True
+                core.cli.ignore_stop_ = True
             elif option in ['-isr', '--ignore-stop-reset']:
-                ignore_stop_ = True
-                ignore_stop_reset_ = True
+                core.cli.ignore_stop_ = True
+                core.cli.ignore_stop_reset_ = True
             elif option in ['-h', '---help']:
                 topic = None
                 if i < len(sys.argv) - 1:
@@ -750,14 +627,14 @@ def parseOptions():
                     skip = True
                 showHelp(topic, True)
             elif option in ['-st', '--skip-testing']:
-                skip_testing_ = True
+                core.cli.skip_testing_ = True
             elif option in ['-tv', '--test-verbose']:
                 parseDirective('&test verbose')
             elif option in ['-tfv', '--test-force-verbose']:
-                test_force_verbose_ = True
+                core.cli.test_force_verbose_ = True
                 parseDirective('&test verbose')
             elif option in ['-tfq', '--test-force-quiet']:
-                test_force_quiet_ = True
+                core.cli.test_force_quiet_ = True
                 parseDirective('&test quiet')
             else:
                 errorMessage('Unknown option: ' + option)
@@ -770,45 +647,43 @@ def parseOptions():
 ################################################################################
 
 def parseLine(line):
-    global running_
-    global fulbal_, clrbal_, catfield_, clrfield_, incfield_, decfield_, catvalues_
-    global elements_, headers_, header_mode_
+    global header_mode_
     if re.search('^\s*&', line):
         parseDirective(line)
     else:
-        elements_ = getElements(line)
-        if headers_[-1] == None:
-            headers_[-1] = makeHeaders()
+        core.main.elements_ = getElements(line)
+        if core.main.headers_[-1] == None:
+            core.main.headers_[-1] = makeHeaders()
             header_mode_ = True
-        if headers_[-1] == None:
+        if core.main.headers_[-1] == None:
             errorMessage('Invalid header configuration: ' + line)
-            running_[-1] = False
+            core.main.running_[-1] = False
             popEnv()
             return
         out = ''
-        for i, element in enumerate(elements_):
+        for i, element in enumerate(core.main.elements_):
             m = i
-            if map_[-1] != None:
-                m = map_[-1][i] - 1
-            if not headers_[-1][m].startswith('#'):
-                align = justify_[-1][m]
+            if core.main.map_[-1] != None:
+                m = core.main.map_[-1][i] - 1
+            if not core.main.headers_[-1][m].startswith('#'):
+                align = core.main.justify_[-1][m]
                 if align == '<':
-                    out += ljustify(elements_[m], width_[-1][m]) + ' '
+                    out += ljustify(core.main.elements_[m], core.main.width_[-1][m]) + ' '
                 if align == '|':
-                    out += cjustify(elements_[m], width_[-1][m]) + ' '
+                    out += cjustify(core.main.elements_[m], core.main.width_[-1][m]) + ' '
                 if align == '>':
-                    out += rjustify(elements_[m], width_[-1][m]) + ' '
+                    out += rjustify(core.main.elements_[m], core.main.width_[-1][m]) + ' '
         payamt = 0.0
         depamt = 0.0
         if decfield_[-1] != None:
-            payamt = elements_[decfield_[-1]]
+            payamt = core.main.elements_[decfield_[-1]]
             payamt = re.sub('^\d\.-', '', payamt)
             if payamt.strip() == '':
                 payamt = 0.0
         else:
             errorMessage('Decrement field is not set.')
         if incfield_[-1] != None:
-            depamt = elements_[incfield_[-1]]
+            depamt = core.main.elements_[incfield_[-1]]
             depamt = re.sub('^\d\.-', '', depamt)
             if depamt.strip() == '':
                 depamt = 0.0
@@ -850,11 +725,11 @@ def parseLine(line):
                 statvalues_['sum-out'] += float(payamt)
 
             # record specific category values
-            if clrfield_[-1] != None and elements_[clrfield_[-1]] != ' ':
+            if clrfield_[-1] != None and core.main.elements_[clrfield_[-1]] != ' ':
                 clrbal_[-1] -= float(payamt)
                 clrbal_[-1] += float(depamt)
-            if catfield_[-1] != None and elements_[catfield_[-1]] != ' ':
-                for catkey in elements_[catfield_[-1]].split():
+            if catfield_[-1] != None and core.main.elements_[catfield_[-1]] != ' ':
+                for catkey in core.main.elements_[catfield_[-1]].split():
                     catpay_key = catkey + 'payamt'
                     catdep_key = catkey + 'depamt'
                     if not catpay_key in catvalues_: catvalues_[catpay_key] = 0.0
@@ -863,8 +738,8 @@ def parseLine(line):
                     catvalues_[catdep_key] += float(depamt)
 
             # record specific stats values
-            if catfield_[-1] != None and elements_[catfield_[-1]] != ' ':
-                for statkey in elements_[catfield_[-1]].split():
+            if catfield_[-1] != None and core.main.elements_[catfield_[-1]] != ' ':
+                for statkey in core.main.elements_[catfield_[-1]].split():
                     min_in_key = statkey + 'min-in'
                     max_in_key = statkey + 'max-in'
                     num_in_key = statkey + 'num-in'
@@ -898,7 +773,7 @@ def parseLine(line):
 
         except ValueError:
             pass
-        if output_[-1]:
+        if core.main.output_[-1]:
             if header_mode_:
                 printLine('{0}'.format(out))
             else:
@@ -908,14 +783,13 @@ def parseLine(line):
 ################################################################################
 
 def processData():
-    global running_, testing_
     should_stop = True
     try:
         with fileinput.FileInput(files=(filenames), mode='r') as input:
             for line in input:
                 line = re.sub('\n', '', line)
                 if not skipLine(line): parseLine(line)
-                if not running_[-1]: break
+                if not core.main.running_[-1]: break
     except FileNotFoundError as e:
         errorMessage('Input file not found: ' + e.filename)
     except IndexError:
@@ -931,15 +805,14 @@ def processData():
         traceback.print_exc()
     finally:
         fileinput.close()
-        if testing_[-1]:
-            testStop()
+        if core.testing.testing_[-1]:
+            core.testing.testStop()
     if should_stop:
-        running_[-1] = False
+        core.main.running_[-1] = False
 
 ################################################################################
 
 def showHelp(topic, stop_running = False):
-    global running_
     helpfile = None
     if not topic:
         topic = 'usage'
@@ -954,7 +827,7 @@ def showHelp(topic, stop_running = False):
         if helpfile:
             helpfile.close()
     if stop_running:
-        running_[-1] = False
+        core.main.running_[-1] = False
         popEnv()
 
 ####################
@@ -962,6 +835,8 @@ def showHelp(topic, stop_running = False):
 ####################
 
 initGlobals()
+core.reset()
+core.testing.reset()
 
 # show information when starting in interactive mode
 show_info()
@@ -970,11 +845,11 @@ show_info()
 filenames = parseOptions()
 
 # main parsing loop
-while running_[-1]:
+while core.main.running_[-1]:
     processData()
     if not interactive_:
         break
 
 # gracefully handle uncompleted goto directives
-if goto_[-1]:
-    errorMessage("EOF reached before tag '{0}'.".format(goto_[-1]))
+if core.main.goto_[-1]:
+    errorMessage("EOF reached before tag '{0}'.".format(core.main.goto_[-1]))
