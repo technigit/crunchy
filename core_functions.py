@@ -1,9 +1,23 @@
 #!/usr/bin/env python3
 
-import re, sys
-from os.path import exists
+################################################################################
+#
+# Crunchy Report Generator
+#
+# Crunch Really Useful Numbers Coded Hackishly
+#
+# Core Functions
+#
+################################################################################
 
-import core
+import re, sys, textwrap, traceback
+from os.path import dirname, exists, realpath
+
+import core, bridge
+
+################################################################################
+# text formatting
+################################################################################
 
 def ljustify(str, width):
     return str.ljust(width)[:width]
@@ -17,11 +31,357 @@ def rjustify(str, width):
 def currency(num):
     return '${:,.2f}'.format(num)
 
-def infoMessage(message):
-    if core.main.infomsg_[-1] and core.main.output_[-1]: printLine('<i> ' + message)
+################################################################################
+# process data
+#
+#    - Data elements are delimited by two spaces.
+#    - A dash denotes an empty data element.
+################################################################################
 
-def errorMessage(message):
-    printLine(core.ANSI.FG_RED + '<E> ' + message + core.ANSI.FG_DEFAULT, sys.stderr)
+def getElements(line):
+    delim = '~'
+    line = re.sub('^\s*', '', line)
+    line = re.sub('\s\s(\s*)', delim, line)
+    core.main.elements_ = line.split(delim)
+    for i, element in enumerate(core.main.elements_):
+        if element == '-':
+            core.main.elements_[i] = ' '
+    return core.main.elements_
+
+################################################################################
+# generate header data according to specifications
+################################################################################
+
+def makeHeaders():
+    core.main.width_[-1] = [None] * len(core.main.elements_)
+    core.main.justify_[-1] = [None] * len(core.main.elements_)
+    for i, element in enumerate(core.main.elements_):
+        element = element.strip()
+        m = re.search('^.*\D(\d*)$', element)
+        if m:
+            core.main.width_[-1][i] = int(m.group(1))
+            element = re.search('^(.*\D)\d*$', element).group(1)
+            core.main.justify_[-1][i] = '>'
+            if re.search('\<$', element):
+                core.main.justify_[-1][i] = '<'
+            if re.search('\|$', element):
+                core.main.justify_[-1][i] = '|'
+            core.main.elements_[i] = re.sub('[\<\|\>]$', '', element)
+        else:
+            return None
+    return core.main.elements_
+
+################################################################################
+# parse primary directives
+################################################################################
+
+class Parser:
+    def __init__(self):
+        self.done = True
+
+    def parseDirective(self, line):
+        self.preParse(line, None)
+
+    def preParse(self, line, parseLine):
+        arg = None
+        argtrim = None
+        options = []
+        m = re.search('^\s*\S(\S*)\s(.*)$', line)
+        if m:
+            arg = m.group(2)
+            argtrim = arg.strip()
+            while arg.startswith('-'):
+                options.append(argtrim.split()[0])
+                # trim the option and remove one space after it
+                arg = re.sub('^\s*' + options[-1], '', arg)
+                arg = re.sub('^\s', '', arg)
+                # trim the option and remove all spaces after it
+                argtrim = re.sub('^' + options[-1], '', argtrim)
+                argtrim = argtrim.lstrip()
+            if len(options) == 0:
+                options.append('') # insert dummy element
+        else:
+            m = re.search('^\s*\S(\S*)$', line)
+        cmd = m.group(1)
+
+        ####################
+
+        if cmd == 'cd':
+            core.main.read_path_[-1] = argtrim
+            if core.main.read_path_[-1]:
+                infoMessage("Setting current working directory to '{0}'.".format(core.main.read_path_[-1]))
+            else:
+                infoMessage('Resetting current working directory.')
+
+        ####################
+
+        elif cmd == 'read':
+            if argtrim:
+                for option in options:
+                    if option in ['-i', '--inline']:
+                        core.main.read_inline_ = True
+                    elif option in ['-s', '--sandbox']:
+                        core.main.read_inline_ = False
+                    else:
+                        unrecognizedOption(option)
+                read_source = argtrim
+                if core.main.read_path_[-1]:
+                    read_source = core.main.read_path_[-1] + '/' + argtrim
+                if core.main.max_read_depth_ > 0:
+                    core.main.max_read_depth_ = core.main.max_read_depth_ - 1
+                    infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if core.main.read_inline_ else ''))
+                    if exists(read_source):
+                        f = open(read_source, 'r')
+                        pushEnv()
+                        try:
+                            for read_line in f:
+                                read_line = re.sub('\n', '', read_line)
+                                if not skipLine(read_line): parseLine(read_line)
+                                if not core.main.running_[-1]: break
+                        except IndexError:
+                            errorMessage('Badly formed data: {0}'.format(read_line))
+                        except ValueError:
+                            errorMessage('Invalid input: {0}'.format(read_line))
+                        except:
+                            errorMessage('Unexpected error.')
+                            traceback.print_exc()
+                        finally:
+                            f.close()
+                            if core.testing.testing_[-1]:
+                                core.testing.testStop()
+                            popEnv()
+                            infoMessage('Finished{0} reading file {1}.'.format(' inline' if core.main.read_inline_ else '', read_source))
+                    else:
+                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source))
+                    core.main.max_read_depth_ = core.main.max_read_depth_ + 1
+                else:
+                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source))
+            else:
+                infoMessage('Usage: &read <filename>')
+
+        elif cmd == 'goto':
+            core.main.goto_[-1] = argtrim
+            if argtrim:
+                infoMessage("Skipping to '{0}'.".format(core.main.goto_[-1]))
+            else:
+                infoMessage('Usage: &goto <label>')
+
+        ####################
+
+        elif cmd == 'header':
+            if argtrim:
+                core.main.elements_ = getElements(argtrim)
+                core.main.headers_[-1] = makeHeaders()
+            if core.main.headers_[-1]:
+                core.main.header_mode_ = True
+                print_header = True
+                for option in options:
+                    if option in ['-q', '--quiet']:
+                        print_header = False
+                if print_header:
+                    parseLine('  '.join(core.main.headers_[-1]))
+            else:
+                errorMessage('No header information found.')
+
+        ####################
+
+        elif cmd == 'help':
+            showHelp(argtrim)
+
+        ####################
+
+        elif cmd == 'map':
+            show_usage = False
+            if argtrim:
+                premap = getElements(argtrim)
+                core.main.map_[-1] = [None] * len(premap)
+                try:
+                    for m, element in enumerate(premap):
+                        core.main.map_[-1][int(premap[m]) - 1] = m + 1
+                    infoMessage('Fields were remapped.')
+                except ValueError:
+                    show_usage = True
+            else:
+                show_usage = True
+            if show_usage:
+                infoMessage('Usage: &map <int><space><space><int>...')
+
+        ####################
+
+        elif cmd == 'output' and arg == 'on':
+            core.main.output_[-1] = True
+            infoMessage('Output mode is on.')
+        elif cmd == 'output' and arg == 'off':
+            infoMessage('Output mode is off.')
+            core.main.output_[-1] = False
+        elif cmd =='output':
+            infoMessage('Usage: &output on|off')
+
+        ####################
+
+        elif cmd == 'print':
+            done = False
+            if argtrim and argtrim.startswith('"'):
+                # leading double quote
+                argtrim = argtrim[1:]
+                arg = argtrim
+                if argtrim.endswith('"'):
+                    # optional matching double quote
+                    argtrim = argtrim[:-1]
+                    arg = argtrim
+            for option in options:
+                if option in ['-f', '--force']:
+                    # force print
+                    printLine(arg)
+                    done = True
+                else:
+                    unrecognizedOption(option)
+            if not done:
+                if core.main.output_[-1]:
+                    printLine(arg) if arg is not None else printLine()
+                else:
+                    pass
+
+        ####################
+
+        elif cmd == 'stop':
+
+            # --ignore-stop: continue reading data and ignore the &stop directive
+            # otherwise, stop testing and stop running
+            if not core.cli.ignore_stop_:
+                if core.testing.testing_[-1]:
+                    core.testing.testStop()
+                core.main.running_[-1] = False
+
+            # --ignore-stop-reset: same as --ignore-stop, but also reset all running values
+            if core.cli.ignore_stop_reset_:
+                if core.testing.testing_[-1]:
+                    core.testing.testStop()
+                core.reset()
+                core.testing.reset()
+                bridge.reset()
+
+        ####################
+
+        elif cmd == 'test' and core.cli.skip_testing_:
+            pass
+        elif cmd == 'test':
+            if argtrim == None:
+                core.testing.testMessage('Usage: &{0} <parameters>'.format(cmd))
+            elif argtrim.startswith('start'):
+                if not core.testing.testing_[-1]:
+                    m = re.search('^start\s+(\S*)$', argtrim)
+                    if m:
+                        core.testing.test_filename_[-1] = m.group(1)
+                        core.testing.testing_[-1] = True
+                        core.testing.test_pause_[-1] = False
+                        core.testing.test_pass_[-1] = 0
+                        core.testing.test_fail_[-1] = 0
+                        core.testing.testMessage("Test started with {0}".format(core.testing.test_filename_[-1]))
+                    else:
+                        core.testing.testMessage('Test filename not specified.')
+                else:
+                    testing.testMessage('Test is already running ({0}).'.format(core.testing.test_filename_[-1]))
+            elif argtrim == 'pause':
+                if core.testing.testing_[-1]:
+                    core.testing.test_pause_[-1] = True
+                    core.testing.testMessage('Test paused.')
+                else:
+                    core.testing.testMessage('No test is currently running.')
+            elif argtrim == 'resume':
+                if core.testing.testing_[-1]:
+                    core.testing.test_pause_[-1] = False
+                    core.testing.testMessage('Test resumed.')
+                else:
+                    core.testing.testMessage('No test is currently running.')
+            elif argtrim == 'verbose':
+                if not core.cli.test_force_quiet_:
+                    core.testing.test_verbose_[-1] = True
+                    core.testing.testMessage('Test mode set to verbose.')
+            elif argtrim == 'quiet':
+                if not core.cli.test_force_verbose_:
+                    core.testing.test_verbose_[-1] = False
+                    core.testing.testMessage('Test mode set to quiet.')
+            elif argtrim == 'stop':
+                core.testing.testStop()
+            else:
+                core.testing.testMessage('{0}: invalid parameter.',format(cmd))
+
+        ####################
+
+        elif cmd == 'infomsg' and arg == 'on':
+            core.main.infomsg_[-1] = True
+            infoMessage('Infomsg mode is on.')
+        elif cmd == 'infomsg' and arg == 'off':
+            core.main.infomsg_[-1] = False
+
+        ####################
+
+        else:
+            self.done = False
+
+        self.arg = arg
+        self.argtrim = argtrim
+        self.cmd = cmd
+        self.m = m
+        self.options = options
+
+################################################################################
+# process command-line options
+################################################################################
+
+def parseOptions():
+    if len(sys.argv) == 1:
+        return
+    input_files = []
+    skip = False
+    for i, option in enumerate(sys.argv):
+        if skip:
+            skip = False
+            continue
+        if option.startswith('-'):
+            if option in ['-is', '--ignore-stop']:
+                core.cli.ignore_stop_ = True
+            elif option in ['-isr', '--ignore-stop-reset']:
+                core.cli.ignore_stop_ = True
+                core.cli.ignore_stop_reset_ = True
+            elif option in ['-h', '---help']:
+                topic = None
+                if i < len(sys.argv) - 1:
+                    topic = sys.argv[i+1]
+                    skip = True
+                showHelp(topic, True)
+            elif option in ['-st', '--skip-testing']:
+                core.cli.skip_testing_ = True
+            elif option in ['-tv', '--test-verbose']:
+                p.parseDirective('&test verbose')
+            elif option in ['-tfv', '--test-force-verbose']:
+                core.cli.test_force_verbose_ = True
+                p.parseDirective('&test verbose')
+            elif option in ['-tfq', '--test-force-quiet']:
+                core.cli.test_force_quiet_ = True
+                p.parseDirective('&test quiet')
+            else:
+                # result[0] = known/unknown
+                # result[1] = skip next word (option parameter)
+                result = bridge.parseOption(option)
+                if result[0] == False:
+                    errorMessage('Unknown option: {0}'.format(option))
+                    printLine()
+                    showHelp('usage', True)
+                else:
+                    skip = result[1]
+        elif i > 0:
+            input_files.append(option)
+    return input_files
+
+def unrecognizedOption(option):
+    if option != '':
+        errorMessage('Unrecognized option: {0}'.format(option))
+
+################################################################################
+# send content to the output, but run it through testing if required
+################################################################################
 
 def printLine(line = '', stdio=sys.stdout):
     if core.testing.testing_[-1]:
@@ -41,7 +401,7 @@ def printLine(line = '', stdio=sys.stdout):
                 if test_line != '':
                     test_line = re.sub('\n', '', test_line)
                     if line == test_line:
-                        core.testing.testMessage('Passed: ' + line)
+                        core.testing.testMessage('Passed: {0}'.format(line))
                         core.testing.test_pass_[-1] += 1
                     else:
                         core.testing.testMessage("Expected: '{0}'".format(test_line), True)
@@ -51,7 +411,128 @@ def printLine(line = '', stdio=sys.stdout):
                     core.testing.testMessage('Unexpected EOF reached; stopping test.', True)
                     core.testing.testStop(True)
         except:
-            core.testing.testMessage('Unexpected error: ' + line, True)
+            core.testing.testMessage('Unexpected error: {0}'.format(line), True)
             traceback.print_exc()
     if not core.testing.testing_[-1]:
         print(line, file=stdio)
+
+################################################################################
+# process comments and gotos
+################################################################################
+
+def skipLine(line):
+    if core.main.comment_mode_[-1] == -1: core.main.comment_mode_[-1] = 0
+    if re.search('^\s*\/\*', line): core.main.comment_mode_[-1] = 1
+    if re.search('\*\/\s*$', line): core.main.comment_mode_[-1] = -1
+    if core.main.comment_mode_[-1] != 0: return True
+    if re.search('^\s*\#', line): return True
+    if re.search('^\s*\/\/', line): return True
+    if re.search('^[\s-]*$', line): return True
+    m = re.search('^\s*(\S*)\:\s*$', line)
+    if m:
+        if m.group(1) == core.main.goto_[-1]:
+            core.main.goto_[-1] = None
+        return True
+    if core.main.goto_[-1]: return True
+    return False
+
+################################################################################
+# process help files
+################################################################################
+
+def showHelp(topic, stop_running = False):
+    helpfile = None
+    if not topic:
+        topic = 'usage'
+    try:
+        dir_path = dirname(realpath(__file__))
+        helpfile = open(dir_path + '/help/' + re.sub(' ', '-', topic).lower() + '.txt')
+        for line in helpfile:
+            print(textwrap.fill(line, core.main.terminal_width_))
+    except FileNotFoundError:
+        errorMessage("No help file for '{0}' could be found.".format(topic))
+    finally:
+        if helpfile:
+            helpfile.close()
+    if stop_running:
+        core.main.running_[-1] = False
+        popEnv()
+
+################################################################################
+# maintain an environment stack to facilitate nested file reads
+################################################################################
+
+def pushEnv():
+    pushLists([
+        core.main.running_,
+        core.main.comment_mode_,
+        core.main.infomsg_,
+        core.main.output_,
+        core.main.goto_,
+        core.main.read_path_,
+        core.main.elements_,
+        core.main.headers_,
+        core.main.justify_,
+        core.main.width_,
+        core.main.map_
+    ])
+    pushLists([
+        core.testing.testing_,
+        core.testing.test_filename_,
+        core.testing.test_f_,
+        core.testing.test_pause_,
+        core.testing.test_verbose_,
+        core.testing.test_pass_,
+        core.testing.test_fail_
+    ])
+
+def popEnv():
+    popLists([
+        core.main.running_,
+        core.main.comment_mode_,
+        core.main.infomsg_,
+        core.main.output_,
+        core.main.goto_,
+        core.main.read_path_,
+        core.main.elements_,
+        core.main.headers_,
+        core.main.justify_,
+        core.main.width_,
+        core.main.map_
+    ])
+    pushLists([
+        core.testing.testing_,
+        core.testing.test_filename_,
+        core.testing.test_f_,
+        core.testing.test_pause_,
+        core.testing.test_verbose_,
+        core.testing.test_pass_,
+        core.testing.test_fail_
+    ])
+
+def pushLists(lists):
+    for list in lists:
+        if list != None:
+            list.append(list[-1])
+
+def popLists(lists):
+    for list in lists:
+        if list != None and len(list) > 1:
+            if not core.main.read_inline_:
+                list.pop()
+            else:
+                copy = list[-1]
+                list.pop()
+                list[-1] = copy
+
+################################################################################
+# messaging
+################################################################################
+
+def infoMessage(message):
+    if core.main.infomsg_[-1] and core.main.output_[-1]: printLine('<i> ' + message)
+
+def errorMessage(message):
+    printLine(core.ANSI.FG_RED + '<E> ' + message + core.ANSI.FG_DEFAULT, sys.stderr)
+
+p = Parser()

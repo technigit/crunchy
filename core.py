@@ -1,6 +1,22 @@
 #!/usr/bin/env python3
 
-import testing_functions
+################################################################################
+#
+# Crunchy Report Generator
+#
+# Crunch Really Useful Numbers Coded Hackishly
+#
+# Core variables that can be accessed by other modules
+#
+################################################################################
+
+import shutil
+
+import bridge, testing_functions
+
+################################################################################
+# all primary environment values and functions are accessed here
+################################################################################
 
 class main():
     running_ = []
@@ -11,9 +27,13 @@ class main():
     read_path_ = []
     elements_ = None
     headers_ = []
+    header_mode_ = None
     justify_ = []
     width_ = []
     map_ = []
+    max_read_depth_ = 5
+    terminal_width_ = shutil.get_terminal_size().columns
+    read_inline_ = False
 
 class testing():
     testing_ = []
@@ -55,7 +75,10 @@ def reset():
     cli.test_force_quiet_ = False
     cli.test_force_verbose_ = False
 
+################################################################################
 # class methods to set text colors
+################################################################################
+
 class ANSI():
     def set_display_attribute(code): return "\33[{attr}m".format(attr = code)
     FG_DEFAULT = set_display_attribute(0)

@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 
-import shutil
+################################################################################
+#
+# Crunchy Report Generator
+#
+# Crunch Really Useful Numbers Coded Hackishly
+#
+# Testing functions
+#
+################################################################################
 
-import core, core_functions
-rjustify = core_functions.rjustify
+import core
+from core_functions import rjustify
 
 def reset():
     core.testing.testing_ = [False]
