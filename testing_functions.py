@@ -54,10 +54,21 @@ def testStop(verbose = False):
     testMessage(rjustify(tested, 18 + text_offset) + rjustify(passed, 24 + text_offset) + failed + testfile, True)
     core.testing.test_filename_[-1] = ''
 
-def debugList(listname, list = []):
-    if listname in globals():
-        list = globals()[listname]
-    print(listname + ':  ', end='')
-    for i in list:
-        print('`' + str(i), end='')
-    print('')
+def listVars_(core_class, filters, classname = None):
+    if classname == None:
+        classname = core_class.__name__
+    for var in vars(core_class):
+        attr = getattr(core_class, var)
+        should_show = filters == [] or var in filters or classname in filters
+        if not var.startswith('__') and not callable(attr) and should_show:
+            print('{0}.{1} = {2}'.format(classname.rjust(8), var.ljust(20), attr))
+
+def debug(argv):
+    if argv != None:
+        filters = argv.split()
+    else:
+        filters = []
+    listVars_(core.main, filters)
+    listVars_(core.cli, filters)
+    listVars_(core.testing, filters)
+    listVars_(core.bridge.my, filters, 'plugin')

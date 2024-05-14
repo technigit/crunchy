@@ -5,9 +5,13 @@ Help Topic: Directives
 
       Change the current working directory to <path>, or reset it if no path is specified.
 
+      Applies to:  general usage
+
    &goto <label>
 
       Jump to the next line with the specified label.
+
+      Applies to:  general usage
 
       Example:
 
@@ -27,25 +31,29 @@ Help Topic: Directives
 
          Do not display the header, regardless of output mode.
 
+      Applies to:  general usage
+
       See also:  &help data-format
 
    &help [<topic>]
 
       Display help information.
 
-   &init <float>
-
-      Set the current running balance to the specified float.
+      Applies to:  general usage
 
    &map <descriptors>
 
       Remap the fields so that they display in a specified order.
+
+      Applies to:  general usage
 
       See also:  &help map
 
    &output on|off
 
       Enable or disable the output, but otherwise process the data as usual.
+
+      Applies to:  general usage
 
    &print [<options>] ["][<text>]["]
 
@@ -56,6 +64,8 @@ Help Topic: Directives
          -f | --force
 
             Force the text to be displayed, even if output mode is turned off.
+
+      Applies to:  general usage
 
    &read [<options>] [path]<filename>
 
@@ -73,41 +83,7 @@ Help Topic: Directives
 
             Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read completes or is terminated.
 
+      Applies to:  general usage
+
       See also:  &help read
-
-   &set catfield <int>
-
-      Specify which field will be the category field.
-
-      See also:  &help set, &help categories
-
-   &set clrfield <int>
-
-      Specify which field will be the clear field (e.g., cleared the bank).
-
-      See also:  &help set
-
-   &set decfield <int>
-
-      Specify which field will be the decrement field (e.g., withdrawals).
-
-      See also:  &help set
-
-   &set incfield <int>
-
-      Specify which field will be the increment field (e.g., deposits).
-
-      See also:  &help set
-
-   &stats [<options>] [<categories>]
-
-      Display incoming and outgoing totals, along with other statistics such as minimums, averages, and maximums.
-
-      Options:
-
-         -f | --full
-
-            Display more detailed information.
-
-      See also:  &help categories, &help stats
 

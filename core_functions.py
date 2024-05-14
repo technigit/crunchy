@@ -19,6 +19,15 @@ import core, bridge
 # text formatting
 ################################################################################
 
+def formatElement(index):
+    align = core.main.justify_[-1][index]
+    if align == '<':
+        return ljustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+    if align == '|':
+        return cjustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+    if align == '>':
+        return rjustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+
 def ljustify(str, width):
     return str.ljust(width)[:width]
 
@@ -115,50 +124,6 @@ class Parser:
 
         ####################
 
-        elif cmd == 'read':
-            if argtrim:
-                for option in options:
-                    if option in ['-i', '--inline']:
-                        core.main.read_inline_ = True
-                    elif option in ['-s', '--sandbox']:
-                        core.main.read_inline_ = False
-                    else:
-                        unrecognizedOption(option)
-                read_source = argtrim
-                if core.main.read_path_[-1]:
-                    read_source = core.main.read_path_[-1] + '/' + argtrim
-                if core.main.max_read_depth_ > 0:
-                    core.main.max_read_depth_ = core.main.max_read_depth_ - 1
-                    infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if core.main.read_inline_ else ''))
-                    if exists(read_source):
-                        f = open(read_source, 'r')
-                        pushEnv()
-                        try:
-                            for read_line in f:
-                                read_line = re.sub('\n', '', read_line)
-                                if not skipLine(read_line): parseLine(read_line)
-                                if not core.main.running_[-1]: break
-                        except IndexError:
-                            errorMessage('Badly formed data: {0}'.format(read_line))
-                        except ValueError:
-                            errorMessage('Invalid input: {0}'.format(read_line))
-                        except:
-                            errorMessage('Unexpected error.')
-                            traceback.print_exc()
-                        finally:
-                            f.close()
-                            if core.testing.testing_[-1]:
-                                core.testing.testStop()
-                            popEnv()
-                            infoMessage('Finished{0} reading file {1}.'.format(' inline' if core.main.read_inline_ else '', read_source))
-                    else:
-                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source))
-                    core.main.max_read_depth_ = core.main.max_read_depth_ + 1
-                else:
-                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source))
-            else:
-                infoMessage('Usage: &read <filename>')
-
         elif cmd == 'goto':
             core.main.goto_[-1] = argtrim
             if argtrim:
@@ -244,8 +209,53 @@ class Parser:
 
         ####################
 
-        elif cmd == 'stop':
+        elif cmd == 'read':
+            if argtrim:
+                for option in options:
+                    if option in ['-i', '--inline']:
+                        core.main.read_inline_ = True
+                    elif option in ['-s', '--sandbox']:
+                        core.main.read_inline_ = False
+                    else:
+                        unrecognizedOption(option)
+                read_source = argtrim
+                if core.main.read_path_[-1]:
+                    read_source = core.main.read_path_[-1] + '/' + argtrim
+                if core.main.max_read_depth_ > 0:
+                    core.main.max_read_depth_ = core.main.max_read_depth_ - 1
+                    infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if core.main.read_inline_ else ''))
+                    if exists(read_source):
+                        f = open(read_source, 'r')
+                        pushEnv()
+                        try:
+                            for read_line in f:
+                                read_line = re.sub('\n', '', read_line)
+                                if not skipLine(read_line): parseLine(read_line)
+                                if not core.main.running_[-1]: break
+                        except IndexError:
+                            errorMessage('Badly formed data: {0}'.format(read_line))
+                        except ValueError:
+                            errorMessage('Invalid input: {0}'.format(read_line))
+                        except:
+                            errorMessage('Unexpected error.')
+                            traceback.print_exc()
+                        finally:
+                            f.close()
+                            if core.testing.testing_[-1]:
+                                core.testing.testStop()
+                            popEnv()
+                            infoMessage('Finished{0} reading file {1}.'.format(' inline' if core.main.read_inline_ else '', read_source))
+                    else:
+                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source))
+                    core.main.max_read_depth_ = core.main.max_read_depth_ + 1
+                else:
+                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source))
+            else:
+                infoMessage('Usage: &read <filename>')
 
+        ####################
+
+        elif cmd == 'stop':
             # --ignore-stop: continue reading data and ignore the &stop directive
             # otherwise, stop testing and stop running
             if not core.cli.ignore_stop_:
@@ -309,9 +319,19 @@ class Parser:
 
         ####################
 
+        elif cmd == 'debug':
+            core.testing.debug(argtrim)
+
+        ####################
+
         elif cmd == 'infomsg' and arg == 'on':
+            quiet = False
+            for option in options:
+                if option in ['-q']:
+                    quiet = True
             core.main.infomsg_[-1] = True
-            infoMessage('Infomsg mode is on.')
+            if not quiet:
+                infoMessage('Infomsg mode is on.')
         elif cmd == 'infomsg' and arg == 'off':
             core.main.infomsg_[-1] = False
 
@@ -362,9 +382,13 @@ def parseOptions():
                 core.cli.test_force_quiet_ = True
                 p.parseDirective('&test quiet')
             else:
+                if i < len(sys.argv) - 1:
+                    parameter = sys.argv[i+1]
+                else:
+                    parameter = None
                 # result[0] = known/unknown
                 # result[1] = skip next word (option parameter)
-                result = bridge.parseOption(option)
+                result = bridge.parseOption(option, parameter)
                 if result[0] == False:
                     errorMessage('Unknown option: {0}'.format(option))
                     printLine()
@@ -485,6 +509,7 @@ def pushEnv():
         core.testing.test_pass_,
         core.testing.test_fail_
     ])
+    pushLists(bridge.getEnv())
 
 def popEnv():
     popLists([
@@ -500,7 +525,7 @@ def popEnv():
         core.main.width_,
         core.main.map_
     ])
-    pushLists([
+    popLists([
         core.testing.testing_,
         core.testing.test_filename_,
         core.testing.test_f_,
@@ -509,6 +534,7 @@ def popEnv():
         core.testing.test_pass_,
         core.testing.test_fail_
     ])
+    popLists(bridge.getEnv())
 
 def pushLists(lists):
     for list in lists:

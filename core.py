@@ -46,7 +46,7 @@ class testing():
     reset = testing_functions.reset
     testMessage = testing_functions.testMessage
     testStop = testing_functions.testStop
-    debugList = testing_functions.debugList
+    debug = testing_functions.debug
 
 class cli():
     ignore_stop_ = None

@@ -5,7 +5,7 @@ Help Topic: Categories
 
    The &stats directive can be used to display category information.
 
-   See also:  &help stats
+   See also:  &help banking/stats
 
    Example:
 

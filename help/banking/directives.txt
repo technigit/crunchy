@@ -1,0 +1,43 @@
+--
+Help Topic: Banking/Directives
+
+   &init <float>
+
+      Set the current running balance to the specified float.
+
+   &set catfield <int>
+
+      Specify which field will be the category field.
+
+      See also:  &help banking/set, &help banking/categories
+
+   &set clrfield <int>
+
+      Specify which field will be the clear field (e.g., cleared the bank).
+
+      See also:  &help banking/set
+
+   &set decfield <int>
+
+      Specify which field will be the decrement field (e.g., withdrawals).
+
+      See also:  &help banking/set
+
+   &set incfield <int>
+
+      Specify which field will be the increment field (e.g., deposits).
+
+      See also:  &help banking/set
+
+   &stats [<options>] [<categories>]
+
+      Display incoming and outgoing totals, along with other statistics such as minimums, averages, and maximums.
+
+      Options:
+
+         -f | --full
+
+            Display more detailed information.
+
+      See also:  &help banking/categories, &help banking/stats
+

@@ -12,7 +12,7 @@ Help Topic: Stats
 
       - minimum, average, and maximum values
 
-   See also:  &help categories
+   See also:  &help banking/categories
 
    Example:
 
