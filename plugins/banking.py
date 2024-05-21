@@ -10,15 +10,15 @@
 #
 ################################################################################
 
-import re, traceback
+import re
 from os.path import exists
 
 import core
-from core_functions import formatElement, ljustify, cjustify, rjustify, currency
-from core_functions import getElements, makeHeaders
+from core_functions import ljustify, rjustify, currency
+from core_functions import preParseLine
 from core_functions import Parser, unrecognizedOption
+from core_functions import isDirective
 from core_functions import printLine
-from core_functions import pushEnv, popEnv
 from core_functions import infoMessage, errorMessage
 
 class my():
@@ -63,12 +63,12 @@ stats_min = 0.0
 stats_max = 9999999.0
 
 ################################################################################
-# parse module-specific directives, but pre-parse for core directives first
+# parse plugin-specific directives, but pre-parse for core directives first
 ################################################################################
 
 def parseDirective(line):
     p = Parser()
-    p.preParse(line, parseLine)
+    p.preParseDirective(line, parseLine)
     if p.done:
         return
     arg = p.arg
@@ -78,7 +78,9 @@ def parseDirective(line):
 
     ####################
 
-    if cmd == 'init':
+    if cmd == 'identify':
+        infoMessage('This is the banking plugin.')
+    elif cmd == 'init':
         if argtrim:
             if not cli.override_init:
                 my.fulbal_[-1] = float(argtrim)
@@ -258,7 +260,7 @@ def moreStats(category):
     printLine()
 
 ################################################################################
-# add command-line options just for this module
+# add command-line options just for this plugin
 ################################################################################
 
 def parseOption(option, parameter):
@@ -274,29 +276,14 @@ def parseOption(option, parameter):
     return result
 
 ################################################################################
-# module-specific parsing
+# plugin-specific parsing
 ################################################################################
 
 def parseLine(line):
-    if re.search('^\s*&', line):
+    if isDirective(line):
         parseDirective(line)
     else:
-        core.main.elements_ = getElements(line)
-        if core.main.headers_[-1] == None:
-            core.main.headers_[-1] = makeHeaders()
-            core.main.header_mode_ = True
-        if core.main.headers_[-1] == None:
-            errorMessage('Invalid header configuration: {0}'.format(line))
-            core.main.running_[-1] = False
-            popEnv()
-            return
-        out = ''
-        for i, element in enumerate(core.main.elements_):
-            m = i
-            if core.main.map_[-1] != None:
-                m = core.main.map_[-1][i] - 1
-            if not core.main.headers_[-1][m].startswith('#'):
-                out += formatElement(m)
+        out = preParseLine(line)
         payamt = 0.0
         depamt = 0.0
         if my.decfield_[-1] != None:

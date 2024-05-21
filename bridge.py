@@ -10,10 +10,28 @@
 #
 ################################################################################
 
-import plugins.banking
+import importlib, traceback
 
-getEnv = plugins.banking.getEnv
-parseLine = plugins.banking.parseLine
-parseOption = plugins.banking.parseOption
-reset = plugins.banking.reset
-my = plugins.banking.my
+def placeholder(_none = None, none_ = None):
+    print('placeholder')
+
+class plugin():
+    getEnv = placeholder
+    parseLine = placeholder
+    parseOption = placeholder
+    reset = placeholder
+    my = placeholder
+
+def usePlugin(plugin_name):
+    try:
+        p = importlib.import_module('plugins.%s' % plugin_name)
+        plugin.getEnv = p.getEnv
+        plugin.parseLine = p.parseLine
+        plugin.parseOption = p.parseOption
+        plugin.reset = p.reset
+        plugin.my = p.my
+        plugin.reset()
+    except ModuleNotFoundError:
+        raise ModuleNotFoundError
+    except:
+        traceback.print_exc()

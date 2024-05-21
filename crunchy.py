@@ -10,48 +10,18 @@
 #
 ################################################################################
 
-version_ = 'v0.0.16'
-
 import fileinput, re, sys, traceback
 
-################################################################################
-# primary logic
-################################################################################
-
 import core
-from core_functions import parseOptions, printLine, skipLine, errorMessage
+core.main.version_ = 'v0.0.17'
 
-################################################################################
+from core_functions import showInfo, parseOptions, skipLine, errorMessage
+
 # abstraction layer for plugins
-################################################################################
-
 import bridge
 
 ################################################################################
-# internal environment value(s)
-################################################################################
-
-# interactive mode affects UX for error handling
-interactive_ = False
-
-################################################################################
-# show utility information in interactive mode
-################################################################################
-
-def show_info(should_show = False):
-    global interactive_
-    if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
-        interactive_ = True
-        printLine("""
-Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
-{0}
-
-To get help, enter &help
-To exit interactive mode, use Ctrl-D
-""".format(version_))
-
-################################################################################
-# send data to the module for processing
+# send data to the plugin for processing
 ################################################################################
 
 def processData():
@@ -60,7 +30,7 @@ def processData():
         with fileinput.FileInput(files=(filenames), mode='r') as input:
             for line in input:
                 line = re.sub('\n', '', line)
-                if not skipLine(line): bridge.parseLine(line)
+                if not skipLine(line): bridge.plugin.parseLine(line)
                 if not core.main.running_[-1]: break
     except FileNotFoundError as e:
         errorMessage('Input file not found: {0}'.format(e.filename))
@@ -89,10 +59,10 @@ def processData():
 # initialize all environments
 core.reset()
 core.testing.reset()
-bridge.reset()
+bridge.usePlugin('shell')
 
 # show information when starting in interactive mode
-show_info()
+showInfo()
 
 # process command-line options
 filenames = parseOptions()
@@ -100,7 +70,7 @@ filenames = parseOptions()
 # main parsing loop
 while core.main.running_[-1]:
     processData()
-    if not interactive_:
+    if not core.main.interactive_:
         break
 
 # gracefully handle uncompleted goto directives

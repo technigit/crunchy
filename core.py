@@ -19,8 +19,10 @@ import bridge, testing_functions
 ################################################################################
 
 class main():
+    version_ = None
     running_ = []
     comment_mode_ = []
+    interactive_ = False
     infomsg_ = []
     output_ = []
     goto_ = []

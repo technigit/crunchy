@@ -16,6 +16,21 @@ from os.path import dirname, exists, realpath
 import core, bridge
 
 ################################################################################
+# show utility information in interactive mode
+################################################################################
+
+def showInfo(should_show = False):
+    if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
+        core.interactive_ = True
+        printLine("""
+Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
+{0}
+
+To get help, enter &help
+To exit interactive mode, use Ctrl-D
+""".format(core.main.version_))
+
+################################################################################
 # text formatting
 ################################################################################
 
@@ -84,6 +99,28 @@ def makeHeaders():
 # parse primary directives
 ################################################################################
 
+def isDirective(line):
+    return re.search('^\s*&', line)
+
+def preParseLine(line):
+    core.main.elements_ = getElements(line)
+    if core.main.headers_[-1] == None:
+        core.main.headers_[-1] = makeHeaders()
+        core.main.header_mode_ = True
+    if core.main.headers_[-1] == None:
+        errorMessage('Invalid header configuration: {0}'.format(line))
+        core.main.running_[-1] = False
+        popEnv()
+        return
+    out = ''
+    for i, element in enumerate(core.main.elements_):
+        m = i
+        if core.main.map_[-1] != None:
+            m = core.main.map_[-1][i] - 1
+        if not core.main.headers_[-1][m].startswith('#'):
+            out += formatElement(m)
+    return out
+
 class Parser:
     def __init__(self):
         self.done = True
@@ -91,7 +128,7 @@ class Parser:
     def parseDirective(self, line):
         self.preParse(line, None)
 
-    def preParse(self, line, parseLine):
+    def preParseDirective(self, line, parseLine):
         arg = None
         argtrim = None
         options = []
@@ -269,7 +306,12 @@ class Parser:
                     core.testing.testStop()
                 core.reset()
                 core.testing.reset()
-                bridge.reset()
+                bridge.plugin.reset()
+
+        ####################
+
+        elif cmd == 'use':
+            bridge.usePlugin(argtrim)
 
         ####################
 
@@ -365,6 +407,20 @@ def parseOptions():
             elif option in ['-isr', '--ignore-stop-reset']:
                 core.cli.ignore_stop_ = True
                 core.cli.ignore_stop_reset_ = True
+            elif option in ['-up', '--use-plugin']:
+                if i < len(sys.argv) - 1:
+                    if (len(sys.argv) == 3): # no other options specified
+                        showInfo(True)
+                    plugin_name = sys.argv[i+1]
+                    try:
+                        bridge.usePlugin(plugin_name)
+                    except ModuleNotFoundError:
+                        errorMessage('Plugin not found: {0}'. format(plugin_name))
+                    skip = True
+                else:
+                    errorMessage('Parameter expected: {0}'.format(option))
+                    printLine()
+                    showHelp('usage', True)
             elif option in ['-h', '---help']:
                 topic = None
                 if i < len(sys.argv) - 1:
@@ -388,7 +444,7 @@ def parseOptions():
                     parameter = None
                 # result[0] = known/unknown
                 # result[1] = skip next word (option parameter)
-                result = bridge.parseOption(option, parameter)
+                result = bridge.plugin.parseOption(option, parameter)
                 if result[0] == False:
                     errorMessage('Unknown option: {0}'.format(option))
                     printLine()
@@ -509,7 +565,7 @@ def pushEnv():
         core.testing.test_pass_,
         core.testing.test_fail_
     ])
-    pushLists(bridge.getEnv())
+    pushLists(bridge.plugin.getEnv())
 
 def popEnv():
     popLists([
@@ -534,7 +590,7 @@ def popEnv():
         core.testing.test_pass_,
         core.testing.test_fail_
     ])
-    popLists(bridge.getEnv())
+    popLists(bridge.plugin.getEnv())
 
 def pushLists(lists):
     for list in lists:
@@ -542,14 +598,15 @@ def pushLists(lists):
             list.append(list[-1])
 
 def popLists(lists):
-    for list in lists:
-        if list != None and len(list) > 1:
-            if not core.main.read_inline_:
-                list.pop()
-            else:
-                copy = list[-1]
-                list.pop()
-                list[-1] = copy
+    if lists != None:
+        for list in lists:
+            if list != None and len(list) > 1:
+                if not core.main.read_inline_:
+                    list.pop()
+                else:
+                    copy = list[-1]
+                    list.pop()
+                    list[-1] = copy
 
 ################################################################################
 # messaging
