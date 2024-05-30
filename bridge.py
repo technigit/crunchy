@@ -17,6 +17,7 @@ def placeholder(_none = None, none_ = None):
 
 class plugin():
     getEnv = placeholder
+    identify = placeholder
     parseLine = placeholder
     parseOption = placeholder
     reset = placeholder
@@ -26,11 +27,15 @@ def usePlugin(plugin_name):
     try:
         p = importlib.import_module('plugins.%s' % plugin_name)
         plugin.getEnv = p.getEnv
+        plugin.identify = p.identify
         plugin.parseLine = p.parseLine
         plugin.parseOption = p.parseOption
         plugin.reset = p.reset
         plugin.my = p.my
         plugin.reset()
+    except AttributeError:
+        print('Bridge: Incomplete plugin implementation.  Check that all attributes are implemented.')
+        exit()
     except ModuleNotFoundError:
         raise ModuleNotFoundError
     except:

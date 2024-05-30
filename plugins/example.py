@@ -11,17 +11,21 @@
 ################################################################################
 
 import core
-from core_functions import preParseLine
+from core_functions import preParse, mapElements
 from core_functions import Parser
 from core_functions import isDirective
 from core_functions import printLine
 from core_functions import infoMessage, errorMessage
 
+def identify(): return 'example'
+
 class my():
-    var_ = []
+    sums_ = []
+    rows_ = None
 
 def reset():
-    my.var_ = [None]
+    my.sums_ = [[]]
+    my.rows_ = 0
 
 class cli():
     example_option = True
@@ -30,14 +34,14 @@ reset()
 
 def getEnv():
     return [
-        my.var_
+        my.sums_
     ]
 
 ################################################################################
 # parse plugin-specific directives, but pre-parse for core directives first
 ################################################################################
 
-def parseDirective(line):
+def parseMyDirective(line):
     p = Parser()
     p.preParseDirective(line, parseLine)
     if p.done:
@@ -54,6 +58,18 @@ def parseDirective(line):
             infoMessage('This is an example directive output acting on "{0}"'.format(argtrim))
         else:
             infoMessage('Usage: &example <text>')
+
+    elif cmd == 'stats':
+        if argtrim:
+            if argtrim == 'sums':
+                printLine(mapElements(my.sums_[-1]))
+            elif argtrim == 'averages':
+                averages = []
+                for sum in my.sums_[-1]:
+                    averages.append('{0:8.3f}'.format(sum/my.rows_))
+                printLine(mapElements(averages))
+        else:
+            infoMessage('Usage: &stats <type>')
 
     ####################
 
@@ -82,14 +98,29 @@ def parseOption(option, parameter):
 # plugin-specific parsing
 ################################################################################
 
+def pluginMain(out):
+    linesum = 0
+    for i, element in enumerate(core.main.elements_):
+        if len(my.sums_[-1]) >= i + 1:
+            my.sums_[-1][i] += int(element)
+        else:
+            my.sums_[-1].append(int(element))
+        linesum += int(element)
+    printLine('{0} {1:8.0f} {2:8.3f}'.format(out, linesum, linesum / len(core.main.elements_)))
+    my.rows_ += 1
+
+####################
+# start here
+####################
+
 def parseLine(line):
     if isDirective(line):
-        parseDirective(line)
+        parseMyDirective(line)
     else:
-        out = preParseLine(line)
+        out = preParse(line)
         if core.main.output_[-1]:
             if core.main.header_mode_:
                 printLine('{0}'.format(out))
             else:
-                printLine('{0}'.format(out))
+                pluginMain(out)
         core.main.header_mode_ = False

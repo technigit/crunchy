@@ -12,7 +12,7 @@
 
 import shutil
 
-import bridge, testing_functions
+import testing_functions
 
 ################################################################################
 # all primary environment values and functions are accessed here
@@ -53,6 +53,7 @@ class testing():
 class cli():
     ignore_stop_ = None
     ignore_stop_reset_ = None
+    verbose_verbose_ = None
     skip_testing_ = None
     test_force_quiet_ = None
     test_force_verbose_ = None

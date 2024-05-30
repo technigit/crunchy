@@ -34,14 +34,14 @@ To exit interactive mode, use Ctrl-D
 # text formatting
 ################################################################################
 
-def formatElement(index):
+def formatElement(index, elements):
     align = core.main.justify_[-1][index]
     if align == '<':
-        return ljustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+        return ljustify(str(elements[index]), core.main.width_[-1][index]) + ' '
     if align == '|':
-        return cjustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+        return cjustify(str(elements[index]), core.main.width_[-1][index]) + ' '
     if align == '>':
-        return rjustify(core.main.elements_[index], core.main.width_[-1][index]) + ' '
+        return rjustify(str(elements[index]), core.main.width_[-1][index]) + ' '
 
 def ljustify(str, width):
     return str.ljust(width)[:width]
@@ -96,13 +96,10 @@ def makeHeaders():
     return core.main.elements_
 
 ################################################################################
-# parse primary directives
+# process headers and mapping
 ################################################################################
 
-def isDirective(line):
-    return re.search('^\s*&', line)
-
-def preParseLine(line):
+def preParse(line):
     core.main.elements_ = getElements(line)
     if core.main.headers_[-1] == None:
         core.main.headers_[-1] = makeHeaders()
@@ -112,21 +109,31 @@ def preParseLine(line):
         core.main.running_[-1] = False
         popEnv()
         return
+    return mapElements(core.main.elements_)
+
+def mapElements(elements):
     out = ''
-    for i, element in enumerate(core.main.elements_):
+    for i, element in enumerate(elements):
         m = i
         if core.main.map_[-1] != None:
             m = core.main.map_[-1][i] - 1
         if not core.main.headers_[-1][m].startswith('#'):
-            out += formatElement(m)
+            out += formatElement(m, elements)
     return out
+
+################################################################################
+# parse primary directives
+################################################################################
+
+def isDirective(line):
+    return re.search('^\s*&', line)
 
 class Parser:
     def __init__(self):
         self.done = True
 
     def parseDirective(self, line):
-        self.preParse(line, None)
+        self.preParseDirective(line, None)
 
     def preParseDirective(self, line, parseLine):
         arg = None
@@ -189,6 +196,11 @@ class Parser:
 
         elif cmd == 'help':
             showHelp(argtrim)
+
+        ####################
+
+        elif cmd == 'identify':
+            infoMessage('Loaded plugin: {0}'.format(bridge.plugin.identify()))
 
         ####################
 
@@ -270,11 +282,11 @@ class Parser:
                                 if not skipLine(read_line): parseLine(read_line)
                                 if not core.main.running_[-1]: break
                         except IndexError:
-                            errorMessage('Badly formed data: {0}'.format(read_line))
+                            errorMessage('Badly formed data: {0}'.format(read_line), True)
                         except ValueError:
-                            errorMessage('Invalid input: {0}'.format(read_line))
+                            errorMessage('Invalid input: {0}'.format(read_line), True)
                         except:
-                            errorMessage('Unexpected error.')
+                            errorMessage('Unexpected error.', True)
                             traceback.print_exc()
                         finally:
                             f.close()
@@ -283,10 +295,10 @@ class Parser:
                             popEnv()
                             infoMessage('Finished{0} reading file {1}.'.format(' inline' if core.main.read_inline_ else '', read_source))
                     else:
-                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source))
+                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source), True)
                     core.main.max_read_depth_ = core.main.max_read_depth_ + 1
                 else:
-                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source))
+                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source), True)
             else:
                 infoMessage('Usage: &read <filename>')
 
@@ -415,12 +427,14 @@ def parseOptions():
                     try:
                         bridge.usePlugin(plugin_name)
                     except ModuleNotFoundError:
-                        errorMessage('Plugin not found: {0}'. format(plugin_name))
+                        errorMessage('Plugin not found: {0}'. format(plugin_name), True)
                     skip = True
                 else:
                     errorMessage('Parameter expected: {0}'.format(option))
                     printLine()
                     showHelp('usage', True)
+            elif option in ['-vv']:
+                core.cli.verbose_verbose_ = True
             elif option in ['-h', '---help']:
                 topic = None
                 if i < len(sys.argv) - 1:
@@ -530,7 +544,7 @@ def showHelp(topic, stop_running = False):
         for line in helpfile:
             print(textwrap.fill(line, core.main.terminal_width_))
     except FileNotFoundError:
-        errorMessage("No help file for '{0}' could be found.".format(topic))
+        errorMessage("No help file for '{0}' could be found.".format(topic), True)
     finally:
         if helpfile:
             helpfile.close()
@@ -615,7 +629,13 @@ def popLists(lists):
 def infoMessage(message):
     if core.main.infomsg_[-1] and core.main.output_[-1]: printLine('<i> ' + message)
 
-def errorMessage(message):
+def errorMessage(message, trace = False):
     printLine(core.ANSI.FG_RED + '<E> ' + message + core.ANSI.FG_DEFAULT, sys.stderr)
+    if trace and core.cli.verbose_verbose_:
+        traceback.print_exc()
+
+################################################################################
+# must be at the end of this code
+################################################################################
 
 p = Parser()

@@ -10,10 +10,10 @@
 #
 ################################################################################
 
-import fileinput, re, sys, traceback
+import fileinput, re, traceback
 
 import core
-core.main.version_ = 'v0.0.17'
+core.main.version_ = 'v0.0.18'
 
 from core_functions import showInfo, parseOptions, skipLine, errorMessage
 

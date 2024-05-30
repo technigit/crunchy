@@ -12,6 +12,8 @@
 
 from core_functions import Parser, isDirective, infoMessage, errorMessage
 
+def identify(): return 'shell'
+
 class my(): pass
 def getEnv(): pass
 def parseOption(option, parameter): return [False, False]
