@@ -22,7 +22,7 @@ def reset(): pass
 def parseLine(line):
     if isDirective(line):
         p = Parser()
-        p.preParseDirective(line, parseLine)
+        p.preParseDirective(line)
         if not p.done:
             errorMessage('Invalid directive: {0}'.format(line))
     else:

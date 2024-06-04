@@ -10,7 +10,7 @@
 #
 ################################################################################
 
-import re, sys, textwrap, traceback
+import fileinput, re, sys, textwrap, traceback
 from os.path import dirname, exists, realpath
 
 import core, bridge
@@ -21,7 +21,7 @@ import core, bridge
 
 def showInfo(should_show = False):
     if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
-        core.interactive_ = True
+        core.main.interactive_ = True
         printLine("""
 Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
 {0}
@@ -106,8 +106,9 @@ def preParse(line):
         core.main.header_mode_ = True
     if core.main.headers_[-1] == None:
         errorMessage('Invalid header configuration: {0}'.format(line))
-        core.main.running_[-1] = False
-        popEnv()
+        if not core.main.interactive_:
+            core.main.running_[-1] = False
+            popEnv()
         return
     return mapElements(core.main.elements_)
 
@@ -133,28 +134,33 @@ class Parser:
         self.done = True
 
     def parseDirective(self, line):
-        self.preParseDirective(line, None)
+        self.preParseDirective(line)
 
-    def preParseDirective(self, line, parseLine):
+    def preParseDirective(self, line):
         arg = None
         argtrim = None
         options = []
-        m = re.search('^\s*\S(\S*)\s(.*)$', line)
+        m = re.search('^\s*\S(cli)\s(.*)$', line)
         if m:
             arg = m.group(2)
             argtrim = arg.strip()
-            while arg.startswith('-'):
-                options.append(argtrim.split()[0])
-                # trim the option and remove one space after it
-                arg = re.sub('^\s*' + options[-1], '', arg)
-                arg = re.sub('^\s', '', arg)
-                # trim the option and remove all spaces after it
-                argtrim = re.sub('^' + options[-1], '', argtrim)
-                argtrim = argtrim.lstrip()
-            if len(options) == 0:
-                options.append('') # insert dummy element
         else:
-            m = re.search('^\s*\S(\S*)$', line)
+            m = re.search('^\s*\S(\S*)\s(.*)$', line)
+            if m:
+                arg = m.group(2)
+                argtrim = arg.strip()
+                while arg.startswith('-'):
+                    options.append(argtrim.split()[0])
+                    # trim the option and remove one space after it
+                    arg = re.sub('^\s*' + options[-1], '', arg)
+                    arg = re.sub('^\s', '', arg)
+                    # trim the option and remove all spaces after it
+                    argtrim = re.sub('^' + options[-1], '', argtrim)
+                    argtrim = argtrim.lstrip()
+                if len(options) == 0:
+                    options.append('') # insert dummy element
+            else:
+                m = re.search('^\s*\S(\S*)$', line)
         cmd = m.group(1)
 
         ####################
@@ -165,6 +171,19 @@ class Parser:
                 infoMessage("Setting current working directory to '{0}'.".format(core.main.read_path_[-1]))
             else:
                 infoMessage('Resetting current working directory.')
+
+        ####################
+
+        elif cmd == 'cli':
+            if argtrim == None:
+                # mimic command line result without any parameters
+                showInfo(True)
+            else:
+                # insert placeholder
+                cli_argv = '. ' + argtrim
+                # run the options as if from the command line
+                filenames = parseOptions(cli_argv.split())
+                processDataFromDirective(filenames)
 
         ####################
 
@@ -188,7 +207,7 @@ class Parser:
                     if option in ['-q', '--quiet']:
                         print_header = False
                 if print_header:
-                    parseLine('  '.join(core.main.headers_[-1]))
+                    bridge.plugin.parseLine('  '.join(core.main.headers_[-1]))
             else:
                 errorMessage('No header information found.')
 
@@ -279,14 +298,14 @@ class Parser:
                         try:
                             for read_line in f:
                                 read_line = re.sub('\n', '', read_line)
-                                if not skipLine(read_line): parseLine(read_line)
+                                if not skipLine(read_line): bridge.plugin.parseLine(read_line)
                                 if not core.main.running_[-1]: break
                         except IndexError:
-                            errorMessage('Badly formed data: {0}'.format(read_line), True)
+                            errorMessage('{0}: Badly formed data: {1}'.format(cmd, read_line), True)
                         except ValueError:
-                            errorMessage('Invalid input: {0}'.format(read_line), True)
+                            errorMessage('{0}: Invalid input: {1}'.format(cmd, read_line), True)
                         except:
-                            errorMessage('Unexpected error.', True)
+                            errorMessage('{0}: Unexpected error.'.format(cmd), True)
                             traceback.print_exc()
                         finally:
                             f.close()
@@ -323,7 +342,11 @@ class Parser:
         ####################
 
         elif cmd == 'use':
-            bridge.usePlugin(argtrim)
+            try:
+                bridge.usePlugin(argtrim)
+                p.parseDirective('&identify')
+            except ModuleNotFoundError:
+                errorMessage('Plugin not found: {0}'. format(argtrim), True)
 
         ####################
 
@@ -404,12 +427,12 @@ class Parser:
 # process command-line options
 ################################################################################
 
-def parseOptions():
-    if len(sys.argv) == 1:
+def parseOptions(argv = sys.argv):
+    if len(argv) == 1:
         return
     input_files = []
     skip = False
-    for i, option in enumerate(sys.argv):
+    for i, option in enumerate(argv):
         if skip:
             skip = False
             continue
@@ -419,11 +442,16 @@ def parseOptions():
             elif option in ['-isr', '--ignore-stop-reset']:
                 core.cli.ignore_stop_ = True
                 core.cli.ignore_stop_reset_ = True
+            elif option in ['-is0']: # undocumented, for testing purposes
+                core.cli.ignore_stop_ = False
+            elif option in ['-isr0']: #undocumented, for testing purposes
+                core.cli.ignore_stop_ = False
+                core.cli.ignore_stop_reset_ = False
             elif option in ['-up', '--use-plugin']:
-                if i < len(sys.argv) - 1:
-                    if (len(sys.argv) == 3): # no other options specified
+                if i < len(argv) - 1:
+                    if (len(argv) == 3): # no other options specified
                         showInfo(True)
-                    plugin_name = sys.argv[i+1]
+                    plugin_name = argv[i+1]
                     try:
                         bridge.usePlugin(plugin_name)
                     except ModuleNotFoundError:
@@ -435,10 +463,12 @@ def parseOptions():
                     showHelp('usage', True)
             elif option in ['-vv']:
                 core.cli.verbose_verbose_ = True
+                if (len(argv) == 2): # no other options specified
+                    showInfo(True)
             elif option in ['-h', '---help']:
                 topic = None
-                if i < len(sys.argv) - 1:
-                    topic = sys.argv[i+1]
+                if i < len(argv) - 1:
+                    topic = argv[i+1]
                     skip = True
                 showHelp(topic, True)
             elif option in ['-st', '--skip-testing']:
@@ -452,8 +482,8 @@ def parseOptions():
                 core.cli.test_force_quiet_ = True
                 p.parseDirective('&test quiet')
             else:
-                if i < len(sys.argv) - 1:
-                    parameter = sys.argv[i+1]
+                if i < len(argv) - 1:
+                    parameter = argv[i+1]
                 else:
                     parameter = None
                 # result[0] = known/unknown
@@ -472,6 +502,34 @@ def parseOptions():
 def unrecognizedOption(option):
     if option != '':
         errorMessage('Unrecognized option: {0}'.format(option))
+
+################################################################################
+# send data to the plugin for processing (from the &cli directive)
+################################################################################
+
+def processDataFromDirective(filenames):
+    try:
+        for filename in filenames:
+            f = open(filename, 'r')
+            input = f.readlines()
+            f.close()
+            for line in input:
+                line = re.sub('\n', '', line)
+                if not skipLine(line): bridge.plugin.parseLine(line)
+                #if not core.main.running_[-1]: break
+    except FileNotFoundError as e:
+        errorMessage('cli: Input file not found: {0}'.format(e.filename))
+    except IndexError:
+        errorMessage('cli: Badly formed data: {0}'.format(line))
+    except ValueError:
+        errorMessage('cli: Invalid input: {0}'.format(line))
+    except KeyboardInterrupt:
+        errorMessage('Interrupted.')
+    except:
+        errorMessage('Unexpected error.')
+        traceback.print_exc()
+    finally:
+        fileinput.close()
 
 ################################################################################
 # send content to the output, but run it through testing if required
@@ -607,9 +665,10 @@ def popEnv():
     popLists(bridge.plugin.getEnv())
 
 def pushLists(lists):
-    for list in lists:
-        if list != None:
-            list.append(list[-1])
+    if lists != None:
+        for list in lists:
+            if list != None:
+                list.append(list[-1])
 
 def popLists(lists):
     if lists != None:

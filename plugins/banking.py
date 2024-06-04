@@ -69,7 +69,7 @@ stats_max = 9999999.0
 
 def parseMyDirective(line):
     p = Parser()
-    p.preParseDirective(line, parseLine)
+    p.preParseDirective(line)
     if p.done:
         return
     arg = p.arg
@@ -393,7 +393,8 @@ def parseLine(line):
         out = preParse(line)
         if core.main.output_[-1]:
             if core.main.header_mode_:
-                printLine('{0}'.format(out))
+                if out != None:
+                    printLine('{0}'.format(out))
             else:
                 pluginMain(out)
         core.main.header_mode_ = False

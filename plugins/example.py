@@ -43,7 +43,7 @@ def getEnv():
 
 def parseMyDirective(line):
     p = Parser()
-    p.preParseDirective(line, parseLine)
+    p.preParseDirective(line)
     if p.done:
         return
     arg = p.arg
