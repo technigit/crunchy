@@ -15,5 +15,13 @@ Help Topic: Files
 
    If no files are listed, you will enter interactive mode, where you can manually enter the same kind of content.  Use Ctrl-D to exit.
 
-   Related help topics:  data-format, directives, map, read
+   See also:
+
+      &help data-format
+
+      &help directives
+
+      &help map
+
+      &help read
 

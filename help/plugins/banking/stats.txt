@@ -1,5 +1,5 @@
 --
-Help Topic: Stats
+Help Topic: Banking/Stats (plugin)
 
    As noted in the Categories help topic, assigning a category to each transactional entry allows a filtered set of entries to be analyzed.  For example, EAT could be a category for eating out in general, while TACOS would be a category just for eating at taco restaurants.  From there, you could use &stats to get insights on how often you eat at taco shops as opposed to other restaurants.
    This directive can be used to display statistical information such as the following:
@@ -12,7 +12,11 @@ Help Topic: Stats
 
       - minimum, average, and maximum values
 
-   See also:  &help banking/categories
+   See also:
+
+      &help banking/categories
+
+      &help banking
 
    Example:
 

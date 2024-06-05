@@ -13,7 +13,7 @@
 import fileinput, re, traceback
 
 import core
-core.main.version_ = 'v0.0.19'
+core.main.version_ = 'v0.0.20'
 
 from core_functions import showInfo, parseOptions, skipLine, errorMessage
 

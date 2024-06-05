@@ -57,7 +57,9 @@ Help Topic: Data Format
 
             Display some help information.
 
-      See also:  &help directives
+      See also:
+
+         &help directives
 
    Labels:
 

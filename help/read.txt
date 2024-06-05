@@ -7,6 +7,8 @@ Help Topic: &read
 
    This directive works recursively up to a certain depth, so the files being read may also use the &read directive.  When a &read process is launched, the environment values are copied from the calling process.  Any environment settings changed during the external file read process will revert after completion or termination.
 
+   Note that the &stop directive has certain effects on the &read process.  During a sandbox process, the &stop directive will return control to the calling process.  However, during an inline process, the entire session will be terminated.
+
    Options:
 
       -i | --inline

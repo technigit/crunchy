@@ -1,0 +1,15 @@
+--
+Help Topic: Banking (plugin)
+
+   The banking plugin allows you to run a cleared report on payment/deposit data from your bank.  It adds its own directives and other features.
+
+   For more information on the banking plugin, please see these help topics:
+
+      &help banking/categories
+
+      &help banking/directives
+
+      &help banking/set
+
+      &help banking/stats
+

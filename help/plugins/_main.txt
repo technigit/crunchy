@@ -1,0 +1,24 @@
+--
+Help Topic: Plugins
+
+   In order for the Crunchy Report Generator to perform any useful work, it needs to load a plugin.  By default, the active plugin is called "shell."  The shell plugin does not process any data at all, so it has very limited usefulness other than allowing a session to get started.  In order to process data, a plugin has to be loaded.  Here are a few ways:
+
+   Options:
+
+      -up <plugin> | --use-plugin <plugin>
+
+   Directives:
+
+      &use <plugin>
+
+      &cli -up <plugin>
+      &cli --use-plugin <plugin>
+
+   Generally, a plugin adds unique abilities to the Crunchy Report Generator.  For example, the banking plugin allows you to run a cleared report on payment/deposit data from your bank.  It adds its own directives and other features.
+
+   See also:
+
+      &help plugins/banking
+
+      &help plugins/writing
+

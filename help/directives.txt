@@ -5,13 +5,21 @@ Help Topic: Directives
 
       Change the current working directory to <path>, or reset it if no path is specified.
 
-      Applies to:  general usage
+   &cli [<options>] [<files>] [-h [<topic>] | --help [<topic>] | ... ]
+
+      Run options and parameters as if from the command line.  To a certain extent, this is useful for scripting.
+
+      Note that the termination behavior of this directive depends on the options and parameters being specified.  Some combinations will start an interactive process, while others will instead start an inline process and then terminate the current interactive process.  With a &read process that encounters the &cli directive, control will thereafter be returned to the calling interactive session, unless that &read directive invokes inline mode.
+
+      See also:
+
+         &help options
+
+         &help usage
 
    &goto <label>
 
       Jump to the next line with the specified label.
-
-      Applies to:  general usage
 
       Example:
 
@@ -31,41 +39,47 @@ Help Topic: Directives
 
          Do not display the header, regardless of output mode.
 
-      Applies to:  general usage
+      See also:
 
-      See also:  &help data-format
+         &help data-format
 
    &help [<topic>]
 
       Display help information.
 
-      Applies to:  general usage
+   &identify
+
+      Display the name of the currently loaded plugin.
+
+      See also:
+
+         &help plugins
+
+   &infomsg on|off
+
+      Enable or disable the informational output.
 
    &map <descriptors>
 
       Remap the fields so that they display in a specified order.
 
-      Applies to:  general usage
+      See also:
 
-      See also:  &help map
+         &help map
 
    &output on|off
 
       Enable or disable the output, but otherwise process the data as usual.
 
-      Applies to:  general usage
-
    &print [<options>] ["][<text>]["]
 
-      Display a line of content.  Optionally, the content can be enclosed with double quotes, but the matching double quote at the end is not required.  In all cases, the content is treated as a string literal (which may contain double quotes).
+      Display a line of content.  Optionally, the content can be enclosed in double quotes, but the matching double quote at the end is not strictly required.  In all cases, the content is treated as a string literal (which may contain double quotes).
 
       Options:
 
          -f | --force
 
             Force the text to be displayed, even if output mode is turned off.
-
-      Applies to:  general usage
 
    &read [<options>] [path]<filename>
 
@@ -83,7 +97,19 @@ Help Topic: Directives
 
             Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read completes or is terminated.
 
-      Applies to:  general usage
+      See also:
 
-      See also:  &help read
+         &help read
+
+   &stop
+
+      Stop processing data.  This either ends a sandbox process or terminates the entire interactive or inline process.
+
+   &use <plugin>
+
+      Start using the specified plugin (e.g., banking or example).  Various environment aspects will change, such as available directives and data processing flows.  By default, the shell plugin is active.
+
+      See also:
+
+         &help plugins
 

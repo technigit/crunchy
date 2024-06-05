@@ -1,0 +1,92 @@
+--
+Help Topic: Writing Plugins
+
+A plugin is a .py file that is stored in the plugins/ directory.  Generally, the structure is as follows:
+
+   1) import libraries:
+
+      import core
+      from core_functions import ...
+
+   2) def blocks:
+
+      def identity(): return '<plugin name>'
+
+      class my():
+          variable1_ = []
+          variable2_ = []
+          variable3_ = None
+          ...
+
+      def reset():
+          my.variable1_ = [0.0]
+          my.variable2_ = [0.0]
+          my.variable3_ = 0
+          ...
+
+      class cli():
+          example_plugin_option = True
+
+      reset()
+
+      def getEnv():
+          return [
+              my.variable1_,
+              my.variable2_,
+              my.variable3_,
+              ...
+          ]
+
+   3) functions:
+
+      def parseMyDirective(line):
+          # check for main directives first
+          p = Parser()
+          p.preParseDirective(line)
+          if p.done:
+              return
+          arg = p.arg
+          argtrim = p.argtrim
+          cmd = p.cmd
+          options = p.options
+
+          # now check for my plugin directives
+          if cmd == 'cmd1':
+              ...
+          elif cmd == 'cmd2':
+              ...
+          else:
+              errorMessage('Invalid directive: {0}'.format(line))
+
+      def parseOption(option, parameter):
+          # result[0] = known/unknown
+          # result[1] = skip next word (option parameter)
+          result = [False, False]
+          if parameter == None:
+              parameter = ''
+          if option in ['-e1', '--example-1']:
+              infoMessage('This is an example option output with no parameters.')
+              result = [True, False]
+          elif option in ['-e2', '--example-2']:
+              infoMessage('This is an example option output with a parameter: {0}'.format(parameter))
+              result = [True, True]
+          return result
+
+      def pluginMain(out):
+          # plugin logic goes here
+          ...
+
+      def parseLine(line):
+          if isDirective(line):
+              parseMyDirective(line)
+          else:
+              out = preParse(line)
+              if core.main.output_[-1]:
+                  if core.main.header_mode_:
+                      printLine('{0}'.format(out))
+                  else:
+                      pluginMain(out)
+              core.main.header_mode_ = False
+
+   See plugins/example.py for a more complete (yet relatively simple) example plugin.  That plugin allows you process data in a completely different way than the banking plugin.  You can generate a report on a grid of numbers, displaying row/column sums and averages.
+

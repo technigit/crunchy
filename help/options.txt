@@ -3,6 +3,10 @@ Help Topic: Options
 
    crunchy.py [<options>] [...]
 
+   -h [<topic>] | --help [<topic>]
+
+      See the 'usage' topic for help topics.
+
    -is | --ignore-stop
 
       Continue reading data and ignore the &stop directive.
@@ -11,7 +15,11 @@ Help Topic: Options
 
       Same as above, but also reset all running values.
 
-   -h [<topic>] | --help [<topic>]
+   -up <plugin> | --use-plugin <plugin>
 
-      See the 'usage' topic for help topics.
+      Load a plugin.  (See &help plugins.)
+
+   -vv
+
+      Show more verbose information.
 

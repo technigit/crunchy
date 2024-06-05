@@ -1,5 +1,7 @@
 --
-Help Topic: Banking/Directives
+Help Topic: Banking/Directives (plugin)
+
+   See also:  &help banking
 
    &init <float>
 

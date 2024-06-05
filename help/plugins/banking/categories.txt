@@ -1,11 +1,15 @@
 --
-Help Topic: Categories
+Help Topic: Banking/Categories (plugin)
 
    By assigning a category to each transactional entry, a filtered set of entries related to a topic can be analyzed.  For example, a category could be defined for eating out, while another might be defined for trips to the grocery store.  Additionally, an entry can have more than one category, so EAT could be a category for eating out in general, while TACOS would be a category just for eating at taco restaurants.
 
    The &stats directive can be used to display category information.
 
-   See also:  &help banking/stats
+   See also:
+
+      &help banking/stats
+
+      &help banking
 
    Example:
 

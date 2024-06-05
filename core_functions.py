@@ -598,7 +598,10 @@ def showHelp(topic, stop_running = False):
         topic = 'usage'
     try:
         dir_path = dirname(realpath(__file__))
-        helpfile = open(dir_path + '/help/' + re.sub(' ', '-', topic).lower() + '.txt')
+        help_path = dir_path + '/help/' + re.sub(' ', '-', topic).lower()
+        if exists(help_path + '/_main.txt'):
+            help_path += '/_main'
+        helpfile = open(help_path + '.txt')
         for line in helpfile:
             print(textwrap.fill(line, core.main.terminal_width_))
     except FileNotFoundError:
