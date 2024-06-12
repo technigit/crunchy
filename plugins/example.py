@@ -62,12 +62,14 @@ def parseMyDirective(line):
     elif cmd == 'stats':
         if argtrim:
             if argtrim == 'sums':
-                printLine(mapElements(my.sums_[-1]))
+                if core.main.output_[-1]:
+                    printLine(mapElements(my.sums_[-1]))
             elif argtrim == 'averages':
                 averages = []
                 for sum in my.sums_[-1]:
                     averages.append('{0:8.3f}'.format(sum/my.rows_))
-                printLine(mapElements(averages))
+                if core.main.output_[-1]:
+                    printLine(mapElements(averages))
         else:
             infoMessage('Usage: &stats <type>')
 
@@ -98,7 +100,13 @@ def parseOption(option, parameter):
 # plugin-specific parsing
 ################################################################################
 
-def pluginMain(out):
+def pluginMain(line):
+    out = preParse(line)
+    if core.main.header_mode_:
+        if core.main.output_[-1] and out != None:
+            printLine(f"{out}")
+        core.main.header_mode_ = False
+        return
     linesum = 0
     for i, element in enumerate(core.main.elements_):
         if len(my.sums_[-1]) >= i + 1:
@@ -117,10 +125,4 @@ def parseLine(line):
     if isDirective(line):
         parseMyDirective(line)
     else:
-        out = preParse(line)
-        if core.main.output_[-1]:
-            if core.main.header_mode_:
-                printLine('{0}'.format(out))
-            else:
-                pluginMain(out)
-        core.main.header_mode_ = False
+        pluginMain(line)

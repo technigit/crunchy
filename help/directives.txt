@@ -105,9 +105,11 @@ Help Topic: Directives
 
       Stop processing data.  This either ends a sandbox process or terminates the entire interactive or inline process.
 
-   &use <plugin>
+   &use [<plugin>]
 
       Start using the specified plugin (e.g., banking or example).  Various environment aspects will change, such as available directives and data processing flows.  By default, the shell plugin is active.
+
+      If no plugin parameter is specified, the name of the loaded plugin will be displayed, followed by a list of available plugins.
 
       See also:
 

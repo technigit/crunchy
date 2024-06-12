@@ -33,6 +33,9 @@ class main():
     justify_ = []
     width_ = []
     map_ = []
+    timer_ = []
+    timer_label_ = []
+    timer_ts_ = []
     max_read_depth_ = 5
     terminal_width_ = shutil.get_terminal_size().columns
     read_inline_ = False
@@ -71,6 +74,9 @@ def reset():
     main.justify_ = [None]
     main.width_ = [None]
     main.map_ = [None]
+    main.timer_ = [False]
+    main.timer_label_ = [None]
+    main.timer_ts_ = [None]
 
     cli.ignore_stop_ = False
     cli.ignore_stop_reset_ = False

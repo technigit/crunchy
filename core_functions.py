@@ -10,7 +10,7 @@
 #
 ################################################################################
 
-import fileinput, re, sys, textwrap, traceback
+import fileinput, glob, re, sys, textwrap, time, traceback
 from os.path import dirname, exists, realpath
 
 import core, bridge
@@ -54,6 +54,47 @@ def rjustify(str, width):
 
 def currency(num):
     return '${:,.2f}'.format(num)
+
+################################################################################
+# timer
+################################################################################
+
+def timerGetLabel():
+    if core.main.timer_label_[-1].isdigit():
+        return core.main.timer_label_[-1]
+    else:
+        return f"'{core.main.timer_label_[-1]}'"
+
+def timerPutLabel(label):
+    if label == '':
+        label = str(len(core.main.timer_) - 1)
+    core.main.timer_label_[-1] = label
+
+def timerStart(label = ''):
+    timerPutLabel(label)
+    if core.main.timer_[-1]:
+        infoMessage('Timer {0} is already running.'.format(timerGetLabel()))
+    else:
+        core.main.timer_[-1] = True
+        core.main.timer_ts_[-1] = time.time()
+        infoMessage('Timer {0} started.'.format(timerGetLabel()))
+
+def timerStop():
+    if not core.main.timer_[-1]:
+        infoMessage('Timer {0} is not running.'.format(timerGetLabel()))
+    else:
+        core.main.timer_[-1] = False
+        ts = time.time()
+        infoMessage('Timer {0} stopped, {1} elapsed.'.format(timerGetLabel(), timerElapsed(core.main.timer_ts_[-1], ts)))
+
+def timerStatus():
+    if core.main.timer_[-1]:
+        infoMessage('Timer {0} is running.'.format(timerGetLabel()))
+    else:
+        infoMessage('Timer {0} is not running.'.format(timerGetLabel()))
+
+def timerElapsed(start, stop):
+    return '{:.5f}s'.format(stop - start)
 
 ################################################################################
 # process data
@@ -341,12 +382,40 @@ class Parser:
 
         ####################
 
+        elif cmd == 'timer':
+            if argtrim != None:
+                label = ''
+                for element in argtrim.split():
+                    if element in ['start', 'stop']:
+                        mode = element
+                    else:
+                        label = element
+                if mode == 'start':
+                    timerStart(label)
+                elif mode == 'stop':
+                    timerStop()
+            else:
+                timerStatus()
+
+        ####################
+
         elif cmd == 'use':
-            try:
-                bridge.usePlugin(argtrim)
+            if argtrim != None:
+                try:
+                    bridge.usePlugin(argtrim)
+                    p.parseDirective('&identify')
+                except ModuleNotFoundError:
+                    errorMessage('Plugin not found: {0}'. format(argtrim), True)
+            else:
                 p.parseDirective('&identify')
-            except ModuleNotFoundError:
-                errorMessage('Plugin not found: {0}'. format(argtrim), True)
+                plugins = glob.glob('plugins/*.py')
+                plugins.sort()
+                out = ''
+                for plugin in plugins:
+                    name = plugin[8:-3]
+                    if name != bridge.plugin.identify():
+                        out += name + '  '
+                infoMessage('Also available:  {0}'.format(out.strip()))
 
         ####################
 
@@ -629,7 +698,10 @@ def pushEnv():
         core.main.headers_,
         core.main.justify_,
         core.main.width_,
-        core.main.map_
+        core.main.map_,
+        core.main.timer_,
+        core.main.timer_label_,
+        core.main.timer_ts_
     ])
     pushLists([
         core.testing.testing_,

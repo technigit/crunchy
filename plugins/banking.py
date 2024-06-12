@@ -144,7 +144,8 @@ def parseMyDirective(line):
                 simpleStatsHeader()
                 for category in argtrim.split():
                     simpleStats(category, True)
-                printLine()
+                if core.main.output_[-1]:
+                    printLine()
         else:
             if not argtrim:
                 moreStats('All')
@@ -169,94 +170,106 @@ def simpleStatsHeader():
     dec_header_width = core.main.width_[-1][my.decfield_[-1]]
     inc_header = core.main.headers_[-1][my.incfield_[-1]]
     inc_header_width = core.main.width_[-1][my.incfield_[-1]]
-    printLine('{0} {1}  {2}'.format(
-        rjustify('', cat_header_width + 2),
-        rjustify(dec_header, dec_header_width + 3),
-        rjustify(inc_header, inc_header_width + 3))
-    )
+    if core.main.output_[-1]:
+        printLine('{0} {1}  {2}'.format(
+            rjustify('', cat_header_width + 2),
+            rjustify(dec_header, dec_header_width + 3),
+            rjustify(inc_header, inc_header_width + 3))
+        )
 
 ####################
 
 def simpleStats(category, use_header = False):
-    catpay_key = category + 'payamt'
-    catdep_key = category + 'depamt'
-    if not catpay_key in my.catvalues_[-1] or not catdep_key in my.catvalues_[-1]:
-        catpay_key = 'payamt'
-        catdep_key = 'depamt'
-    cat_header_width = core.main.width_[-1][my.catfield_[-1]]
-    dec_header = core.main.headers_[-1][my.decfield_[-1]]
-    dec_header_width = core.main.width_[-1][my.decfield_[-1]]
-    catpay_currency = currency(my.catvalues_[-1][catpay_key])
-    inc_header = core.main.headers_[-1][my.incfield_[-1]]
-    inc_header_width = core.main.width_[-1][my.incfield_[-1]]
-    catdep_currency = currency(my.catvalues_[-1][catdep_key])
-    if not use_header:
-        printLine('{0} :: {1}: {2}  {3}: {4}'.format(
-            rjustify(category, cat_header_width),
-            rjustify(dec_header, dec_header_width),
-            rjustify(catpay_currency, dec_header_width + 3),
-            rjustify(inc_header, inc_header_width),
-            rjustify(catdep_currency, inc_header_width + 3))
-        )
-    else:
-        printLine('{0} | {1}  {2}'.format(
-            rjustify(category, cat_header_width),
-            rjustify(catpay_currency, dec_header_width + 3),
-            rjustify(catdep_currency, inc_header_width + 3))
-        )
+    if checkCatField():
+        catpay_key = category + 'payamt'
+        catdep_key = category + 'depamt'
+        if not catpay_key in my.catvalues_[-1] or not catdep_key in my.catvalues_[-1]:
+            catpay_key = 'payamt'
+            catdep_key = 'depamt'
+        cat_header_width = core.main.width_[-1][my.catfield_[-1]]
+        dec_header = core.main.headers_[-1][my.decfield_[-1]]
+        dec_header_width = core.main.width_[-1][my.decfield_[-1]]
+        catpay_currency = currency(my.catvalues_[-1][catpay_key])
+        inc_header = core.main.headers_[-1][my.incfield_[-1]]
+        inc_header_width = core.main.width_[-1][my.incfield_[-1]]
+        catdep_currency = currency(my.catvalues_[-1][catdep_key])
+        if not use_header:
+            if core.main.output_[-1]:
+                printLine('{0} :: {1}: {2}  {3}: {4}'.format(
+                    rjustify(category, cat_header_width),
+                    rjustify(dec_header, dec_header_width),
+                    rjustify(catpay_currency, dec_header_width + 3),
+                    rjustify(inc_header, inc_header_width),
+                    rjustify(catdep_currency, inc_header_width + 3))
+                )
+        else:
+            if core.main.output_[-1]:
+                printLine('{0} | {1}  {2}'.format(
+                    rjustify(category, cat_header_width),
+                    rjustify(catpay_currency, dec_header_width + 3),
+                    rjustify(catdep_currency, inc_header_width + 3))
+                )
 
 ####################
 
 def moreStats(category):
-    min_in_key = category + 'min-in'
-    max_in_key = category + 'max-in'
-    num_in_key = category + 'num-in'
-    sum_in_key = category + 'sum-in'
-    min_out_key = category + 'min-out'
-    max_out_key = category + 'max-out'
-    num_out_key = category + 'num-out'
-    sum_out_key = category + 'sum-out'
-    general = False
-    if not min_in_key in my.statvalues_[-1] or not max_in_key in my.statvalues_[-1] or not num_in_key in my.statvalues_[-1] or not sum_in_key in my.statvalues_[-1] or not min_out_key in my.statvalues_[-1] or not max_out_key in my.statvalues_[-1] or not num_out_key in my.statvalues_[-1] or not sum_out_key in my.statvalues_[-1]:
-        general = True
-        min_in_key = 'min-in'
-        max_in_key = 'max-in'
-        num_in_key = 'num-in'
-        sum_in_key = 'sum-in'
-        min_out_key = 'min-out'
-        max_out_key = 'max-out'
-        num_out_key = 'num-out'
-        sum_out_key = 'sum-out'
-    start = my.statvalues_[-1]['init']
-    finish = my.fulbal_[-1]
-    change = round(100 * (finish - start) / start)
-    change_str = 'decrease' if change < 0 else 'increase'
-    change_str = 'change' if change == 0 else change_str
-    min_in = my.statvalues_[-1][min_in_key] if my.statvalues_[-1][min_in_key] != stats_max else 0
-    num_in = my.statvalues_[-1][num_in_key]
-    sum_in = my.statvalues_[-1][sum_in_key]
-    avg_in = sum_in / num_in if num_in > 0 else 0
-    max_in = my.statvalues_[-1][max_in_key]
-    header_in = core.main.headers_[-1][my.incfield_[-1]]
-    width_in = core.main.width_[-1][my.incfield_[-1]]
-    min_out = my.statvalues_[-1][min_out_key] if my.statvalues_[-1][min_out_key] != stats_max else 0
-    num_out = my.statvalues_[-1][num_out_key]
-    sum_out = my.statvalues_[-1][sum_out_key]
-    avg_out = sum_out / num_out if num_out > 0 else 0
-    max_out = my.statvalues_[-1][max_out_key]
-    header_out = core.main.headers_[-1][my.decfield_[-1]]
-    width_out = core.main.width_[-1][my.decfield_[-1]]
-    printLine('{0}:'.format(category))
-    printLine('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
-    if general:
-        printLine('{0} start, {1} finish, {2}% {3}'.format(currency(start), currency(finish), abs(change), change_str))
-    printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_out, width_out),
-        rjustify(currency(min_out), width_out), rjustify(currency(avg_out), width_out), rjustify(currency(max_out), width_out))
-    )
-    printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_in, width_in),
-        rjustify(currency(min_in), width_in), rjustify(currency(avg_in), width_in), rjustify(currency(max_in), width_in))
-    )
-    printLine()
+    if checkCatField():
+        min_in_key = category + 'min-in'
+        max_in_key = category + 'max-in'
+        num_in_key = category + 'num-in'
+        sum_in_key = category + 'sum-in'
+        min_out_key = category + 'min-out'
+        max_out_key = category + 'max-out'
+        num_out_key = category + 'num-out'
+        sum_out_key = category + 'sum-out'
+        general = False
+        if not min_in_key in my.statvalues_[-1] or not max_in_key in my.statvalues_[-1] or not num_in_key in my.statvalues_[-1] or not sum_in_key in my.statvalues_[-1] or not min_out_key in my.statvalues_[-1] or not max_out_key in my.statvalues_[-1] or not num_out_key in my.statvalues_[-1] or not sum_out_key in my.statvalues_[-1]:
+            general = True
+            min_in_key = 'min-in'
+            max_in_key = 'max-in'
+            num_in_key = 'num-in'
+            sum_in_key = 'sum-in'
+            min_out_key = 'min-out'
+            max_out_key = 'max-out'
+            num_out_key = 'num-out'
+            sum_out_key = 'sum-out'
+        start = my.statvalues_[-1]['init']
+        finish = my.fulbal_[-1]
+        change = round(100 * (finish - start) / start)
+        change_str = 'decrease' if change < 0 else 'increase'
+        change_str = 'change' if change == 0 else change_str
+        min_in = my.statvalues_[-1][min_in_key] if my.statvalues_[-1][min_in_key] != stats_max else 0
+        num_in = my.statvalues_[-1][num_in_key]
+        sum_in = my.statvalues_[-1][sum_in_key]
+        avg_in = sum_in / num_in if num_in > 0 else 0
+        max_in = my.statvalues_[-1][max_in_key]
+        header_in = core.main.headers_[-1][my.incfield_[-1]]
+        width_in = core.main.width_[-1][my.incfield_[-1]]
+        min_out = my.statvalues_[-1][min_out_key] if my.statvalues_[-1][min_out_key] != stats_max else 0
+        num_out = my.statvalues_[-1][num_out_key]
+        sum_out = my.statvalues_[-1][sum_out_key]
+        avg_out = sum_out / num_out if num_out > 0 else 0
+        max_out = my.statvalues_[-1][max_out_key]
+        header_out = core.main.headers_[-1][my.decfield_[-1]]
+        width_out = core.main.width_[-1][my.decfield_[-1]]
+        if core.main.output_[-1]:
+            printLine('{0}:'.format(category))
+            printLine('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
+            if general:
+                printLine('{0} start, {1} finish, {2}% {3}'.format(currency(start), currency(finish), abs(change), change_str))
+            printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_out, width_out),
+                rjustify(currency(min_out), width_out), rjustify(currency(avg_out), width_out), rjustify(currency(max_out), width_out))
+            )
+            printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_in, width_in),
+                rjustify(currency(min_in), width_in), rjustify(currency(avg_in), width_in), rjustify(currency(max_in), width_in))
+            )
+            printLine()
+
+def checkCatField():
+    if my.catfield_[-1] == None:
+        errorMessage('Cannot run &stats when catfield is not set.')
+        return False
+    return True
 
 ################################################################################
 # add command-line options just for this plugin
@@ -278,7 +291,13 @@ def parseOption(option, parameter):
 # plugin-specific parsing
 ################################################################################
 
-def pluginMain(out):
+def pluginMain(line):
+    out = preParse(line)
+    if core.main.header_mode_:
+        if core.main.output_[-1] and out != None:
+            printLine(f"{out}")
+        core.main.header_mode_ = False
+        return
     payamt = 0.0
     depamt = 0.0
     if my.decfield_[-1] != None:
@@ -380,7 +399,8 @@ def pluginMain(out):
     except ValueError:
         pass
 
-    printLine('{0}{1:8.2f} {2:8.2f}'.format(out, my.fulbal_[-1], my.clrbal_[-1]))
+    if core.main.output_[-1]:
+        printLine('{0}{1:8.2f} {2:8.2f}'.format(out, my.fulbal_[-1], my.clrbal_[-1]))
 
 ####################
 # start here
@@ -390,11 +410,4 @@ def parseLine(line):
     if isDirective(line):
         parseMyDirective(line)
     else:
-        out = preParse(line)
-        if core.main.output_[-1]:
-            if core.main.header_mode_:
-                if out != None:
-                    printLine('{0}'.format(out))
-            else:
-                pluginMain(out)
-        core.main.header_mode_ = False
+        pluginMain(line)

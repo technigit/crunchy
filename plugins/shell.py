@@ -19,11 +19,17 @@ def getEnv(): pass
 def parseOption(option, parameter): return [False, False]
 def reset(): pass
 
+def parseMyDirective(line):
+    p = Parser()
+    p.preParseDirective(line)
+    if not p.done:
+        errorMessage(f"Invalid directive: {line}")
+
+def pluginMain(out):
+    infoMessage(identify() + ': This plugin does not process data.')
+
 def parseLine(line):
     if isDirective(line):
-        p = Parser()
-        p.preParseDirective(line)
-        if not p.done:
-            errorMessage('Invalid directive: {0}'.format(line))
+        parseMyDirective(line)
     else:
-        infoMessage('Shell: This plugin does not process data.')
+        pluginMain(None)

@@ -25,7 +25,7 @@ class plugin():
 
 def usePlugin(plugin_name):
     try:
-        p = importlib.import_module('plugins.%s' % plugin_name)
+        p = importlib.import_module('plugins.{0}'.format(plugin_name))
         plugin.getEnv = p.getEnv
         plugin.identify = p.identify
         plugin.parseLine = p.parseLine
