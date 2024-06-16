@@ -10,7 +10,7 @@
 #
 ################################################################################
 
-from core_functions import Parser, isDirective, infoMessage, errorMessage
+from core_functions import Parser, isDirective, infoMessage
 
 def identify(): return 'shell'
 
@@ -21,15 +21,13 @@ def reset(): pass
 
 def parseMyDirective(line):
     p = Parser()
-    p.preParseDirective(line)
-    if not p.done:
-        errorMessage(f"Invalid directive: {line}")
+    p.parseDirective(line)
 
-def pluginMain(out):
-    infoMessage(identify() + ': This plugin does not process data.')
+def pluginMain(line):
+    infoMessage(f"{identify()}: This plugin does not process data.")
 
 def parseLine(line):
     if isDirective(line):
         parseMyDirective(line)
     else:
-        pluginMain(None)
+        pluginMain(line)

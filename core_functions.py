@@ -106,7 +106,7 @@ def timerElapsed(start, stop):
 def getElements(line):
     delim = '~'
     line = re.sub('^\s*', '', line)
-    line = re.sub('\s\s(\s*)', delim, line)
+    line = re.sub(core.main.line_parse_delimiter_, delim, line)
     core.main.elements_ = line.split(delim)
     for i, element in enumerate(core.main.elements_):
         if element == '-':
@@ -142,16 +142,19 @@ def makeHeaders():
 
 def preParse(line):
     core.main.elements_ = getElements(line)
-    if core.main.headers_[-1] == None:
-        core.main.headers_[-1] = makeHeaders()
-        core.main.header_mode_ = True
-    if core.main.headers_[-1] == None:
-        errorMessage('Invalid header configuration: {0}'.format(line))
-        if not core.main.interactive_:
-            core.main.running_[-1] = False
-            popEnv()
-        return
-    return mapElements(core.main.elements_)
+    if core.main.using_headers_:
+        if core.main.headers_[-1] == None:
+            core.main.headers_[-1] = makeHeaders()
+            core.main.header_mode_ = True
+        if core.main.headers_[-1] == None:
+            errorMessage('Invalid header configuration: {0}'.format(line))
+            if not core.main.interactive_:
+                core.main.running_[-1] = False
+                popEnv()
+            return
+        return mapElements(core.main.elements_)
+    else:
+        return ''
 
 def mapElements(elements):
     out = ''
@@ -176,8 +179,15 @@ class Parser:
 
     def parseDirective(self, line):
         self.preParseDirective(line)
+        if not self.done:
+            self.line = line
+            self.invalidDirective()
+
+    def invalidDirective(self):
+        errorMessage(f"Invalid directive: {self.line}")
 
     def preParseDirective(self, line):
+        self.line = line
         arg = None
         argtrim = None
         options = []
@@ -294,7 +304,7 @@ class Parser:
         ####################
 
         elif cmd == 'print':
-            done = False
+            self.done = False
             if argtrim and argtrim.startswith('"'):
                 # leading double quote
                 argtrim = argtrim[1:]
@@ -307,14 +317,15 @@ class Parser:
                 if option in ['-f', '--force']:
                     # force print
                     printLine(arg)
-                    done = True
+                    self.done = True
                 else:
                     unrecognizedOption(option)
-            if not done:
+            if not self.done:
                 if core.main.output_[-1]:
                     printLine(arg) if arg is not None else printLine()
                 else:
                     pass
+            self.done = True
 
         ####################
 
@@ -401,18 +412,17 @@ class Parser:
 
         elif cmd == 'use':
             if argtrim != None:
-                try:
-                    bridge.usePlugin(argtrim)
-                    p.parseDirective('&identify')
-                except ModuleNotFoundError:
-                    errorMessage('Plugin not found: {0}'. format(argtrim), True)
+                core.reset()
+                usePlugin(argtrim)
+                parser.parseDirective('&identify')
             else:
-                p.parseDirective('&identify')
-                plugins = glob.glob('plugins/*.py')
+                parser.parseDirective('&identify')
+                plugins = glob.glob(core.main.source_path_ + '/plugins/*.py')
                 plugins.sort()
                 out = ''
                 for plugin in plugins:
-                    name = plugin[8:-3]
+                    m = re.search('^.*\/([\S\s]*).py', plugin)
+                    name = m.group(1)
                     if name != bridge.plugin.identify():
                         out += name + '  '
                 infoMessage('Also available:  {0}'.format(out.strip()))
@@ -521,10 +531,7 @@ def parseOptions(argv = sys.argv):
                     if (len(argv) == 3): # no other options specified
                         showInfo(True)
                     plugin_name = argv[i+1]
-                    try:
-                        bridge.usePlugin(plugin_name)
-                    except ModuleNotFoundError:
-                        errorMessage('Plugin not found: {0}'. format(plugin_name), True)
+                    usePlugin(plugin_name)
                     skip = True
                 else:
                     errorMessage('Parameter expected: {0}'.format(option))
@@ -543,13 +550,13 @@ def parseOptions(argv = sys.argv):
             elif option in ['-st', '--skip-testing']:
                 core.cli.skip_testing_ = True
             elif option in ['-tv', '--test-verbose']:
-                p.parseDirective('&test verbose')
+                parser.parseDirective('&test verbose')
             elif option in ['-tfv', '--test-force-verbose']:
                 core.cli.test_force_verbose_ = True
-                p.parseDirective('&test verbose')
+                parser.parseDirective('&test verbose')
             elif option in ['-tfq', '--test-force-quiet']:
                 core.cli.test_force_quiet_ = True
-                p.parseDirective('&test quiet')
+                parser.parseDirective('&test quiet')
             else:
                 if i < len(argv) - 1:
                     parameter = argv[i+1]
@@ -599,6 +606,18 @@ def processDataFromDirective(filenames):
         traceback.print_exc()
     finally:
         fileinput.close()
+
+################################################################################
+# call usePlugin in the bridge module and catch errors
+################################################################################
+
+def usePlugin(plugin_name):
+    try:
+        bridge.usePlugin(plugin_name)
+    except AttributeError:
+        errorMessage(f"{plugin_name}: Incomplete plugin implementation.  Check that all attributes are implemented.", True)
+    except ModuleNotFoundError:
+        errorMessage(f"Plugin not found: {plugin_name}", True)
 
 ################################################################################
 # send content to the output, but run it through testing if required
@@ -772,4 +791,4 @@ def errorMessage(message, trace = False):
 # must be at the end of this code
 ################################################################################
 
-p = Parser()
+parser = Parser()

@@ -34,8 +34,7 @@ def usePlugin(plugin_name):
         plugin.my = p.my
         plugin.reset()
     except AttributeError:
-        print('Bridge: Incomplete plugin implementation.  Check that all attributes are implemented.')
-        exit()
+        raise AttributeError
     except ModuleNotFoundError:
         raise ModuleNotFoundError
     except:

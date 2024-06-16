@@ -158,7 +158,7 @@ def parseMyDirective(line):
     ####################
 
     else:
-        errorMessage('Invalid directive: {0}'.format(line))
+        p.invalidDirective()
 
 ################################################################################
 # display banking stats in simple and complex formats
@@ -253,7 +253,7 @@ def moreStats(category):
         header_out = core.main.headers_[-1][my.decfield_[-1]]
         width_out = core.main.width_[-1][my.decfield_[-1]]
         if core.main.output_[-1]:
-            printLine('{0}:'.format(category))
+            printLine(f"{category}:")
             printLine('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
             if general:
                 printLine('{0} start, {1} finish, {2}% {3}'.format(currency(start), currency(finish), abs(change), change_str))
@@ -295,7 +295,7 @@ def pluginMain(line):
     out = preParse(line)
     if core.main.header_mode_:
         if core.main.output_[-1] and out != None:
-            printLine(f"{out}")
+            printLine(out)
         core.main.header_mode_ = False
         return
     payamt = 0.0

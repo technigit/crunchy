@@ -11,6 +11,7 @@
 ################################################################################
 
 import shutil
+from pathlib import Path
 
 import testing_functions
 
@@ -36,9 +37,12 @@ class main():
     timer_ = []
     timer_label_ = []
     timer_ts_ = []
+    line_parse_delimiter_ = None
     max_read_depth_ = 5
+    source_path_ =  str(Path(__file__).resolve().parent)
     terminal_width_ = shutil.get_terminal_size().columns
-    read_inline_ = False
+    read_inline_ = None
+    using_headers_ = None
 
 class testing():
     testing_ = []
@@ -77,6 +81,10 @@ def reset():
     main.timer_ = [False]
     main.timer_label_ = [None]
     main.timer_ts_ = [None]
+
+    main.line_parse_delimiter_ = '\s\s\s*'
+    main.read_inline_ = False
+    main.using_headers_ = True
 
     cli.ignore_stop_ = False
     cli.ignore_stop_reset_ = False

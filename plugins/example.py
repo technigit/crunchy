@@ -76,7 +76,7 @@ def parseMyDirective(line):
     ####################
 
     else:
-        errorMessage('Invalid directive: {0}'.format(line))
+        p.invalidDirective()
 
 ################################################################################
 # add command-line options just for this plugin
@@ -104,7 +104,7 @@ def pluginMain(line):
     out = preParse(line)
     if core.main.header_mode_:
         if core.main.output_[-1] and out != None:
-            printLine(f"{out}")
+            printLine(out)
         core.main.header_mode_ = False
         return
     linesum = 0
@@ -114,7 +114,8 @@ def pluginMain(line):
         else:
             my.sums_[-1].append(int(element))
         linesum += int(element)
-    printLine('{0} {1:8.0f} {2:8.3f}'.format(out, linesum, linesum / len(core.main.elements_)))
+    if core.main.output_[-1]:
+        printLine('{0} {1:8.0f} {2:8.3f}'.format(out, linesum, linesum / len(core.main.elements_)))
     my.rows_ += 1
 
 ####################
