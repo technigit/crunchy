@@ -10,7 +10,7 @@
 #
 ################################################################################
 
-import core
+import core, bridge
 from core_functions import rjustify
 
 def reset():
@@ -61,7 +61,7 @@ def listVars_(core_class, filters, classname = None):
         attr = getattr(core_class, var)
         should_show = filters == [] or var in filters or classname in filters
         if not var.startswith('__') and not callable(attr) and should_show:
-            print('{0}.{1} = {2}'.format(classname.rjust(8), var.ljust(20), attr))
+            print('{0}.{1} = {2}'.format(classname.rjust(8), var.ljust(21), attr))
 
 def debug(argv):
     if argv != None:
@@ -71,4 +71,4 @@ def debug(argv):
     listVars_(core.main, filters)
     listVars_(core.cli, filters)
     listVars_(core.testing, filters)
-    listVars_(core.bridge.my, filters, 'plugin')
+    listVars_(bridge.plugin.my, filters, 'plugin')

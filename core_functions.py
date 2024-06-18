@@ -20,8 +20,7 @@ import core, bridge
 ################################################################################
 
 def showInfo(should_show = False):
-    if should_show or (len(sys.argv) == 1 and sys.stdin.isatty()):
-        core.main.interactive_ = True
+    if should_show or core.main.interactive_:
         printLine("""
 Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
 {0}
@@ -29,6 +28,13 @@ Crunchy Report Generator aka Crunch Really Useful Numbers Coded Hackishly
 To get help, enter &help
 To exit interactive mode, use Ctrl-D
 """.format(core.main.version_))
+
+def checkInteractivity(filenames):
+    if filenames == None or filenames == []:
+        interactive = sys.stdin.isatty()
+    else:
+        interactive = False
+    return interactive
 
 ################################################################################
 # text formatting
@@ -412,9 +418,14 @@ class Parser:
 
         elif cmd == 'use':
             if argtrim != None:
-                core.reset()
+                quiet = False
+                for option in options:
+                    if option in ['-q']:
+                        quiet = True
+                core.reset(False)
                 usePlugin(argtrim)
-                parser.parseDirective('&identify')
+                if not quiet:
+                    parser.parseDirective('&identify')
             else:
                 parser.parseDirective('&identify')
                 plugins = glob.glob(core.main.source_path_ + '/plugins/*.py')
@@ -528,8 +539,6 @@ def parseOptions(argv = sys.argv):
                 core.cli.ignore_stop_reset_ = False
             elif option in ['-up', '--use-plugin']:
                 if i < len(argv) - 1:
-                    if (len(argv) == 3): # no other options specified
-                        showInfo(True)
                     plugin_name = argv[i+1]
                     usePlugin(plugin_name)
                     skip = True
@@ -539,8 +548,6 @@ def parseOptions(argv = sys.argv):
                     showHelp('usage', True)
             elif option in ['-vv']:
                 core.cli.verbose_verbose_ = True
-                if (len(argv) == 2): # no other options specified
-                    showInfo(True)
             elif option in ['-h', '---help']:
                 topic = None
                 if i < len(argv) - 1:

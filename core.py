@@ -20,29 +20,32 @@ import testing_functions
 ################################################################################
 
 class main():
-    version_ = None
-    running_ = []
+    headers_ = []
+    justify_ = []
+    line_parse_delimiter_ = None
+    map_ = []
+    using_headers_ = None
+    width_ = []
+
     comment_mode_ = []
-    interactive_ = False
+    elements_ = None
+    goto_ = []
     infomsg_ = []
     output_ = []
-    goto_ = []
+    read_inline_ = None
     read_path_ = []
-    elements_ = None
-    headers_ = []
-    header_mode_ = None
-    justify_ = []
-    width_ = []
-    map_ = []
+    running_ = []
     timer_ = []
     timer_label_ = []
     timer_ts_ = []
-    line_parse_delimiter_ = None
+
+    header_mode_ = None
+    interactive_ = False
+    interactive_prompt_ = '> '
     max_read_depth_ = 5
     source_path_ =  str(Path(__file__).resolve().parent)
     terminal_width_ = shutil.get_terminal_size().columns
-    read_inline_ = None
-    using_headers_ = None
+    version_ = None
 
 class testing():
     testing_ = []
@@ -65,32 +68,40 @@ class cli():
     test_force_quiet_ = None
     test_force_verbose_ = None
 
-def reset():
-    main.running_ = [True]
-    main.comment_mode_ = [0]
-    main.infomsg_ = [True]
-    main.output_ = [True]
-    main.goto_ = [None]
-    main.read_path_ = [None]
-
-    main.elements_ = None
-    main.headers_ = [None]
-    main.justify_ = [None]
-    main.width_ = [None]
-    main.map_ = [None]
-    main.timer_ = [False]
-    main.timer_label_ = [None]
-    main.timer_ts_ = [None]
-
+def reset(full_reset = True):
+    main.headers_ = setListValue(main.headers_, None)
+    main.justify_ = setListValue(main.justify_, None)
     main.line_parse_delimiter_ = '\s\s\s*'
-    main.read_inline_ = False
+    main.map_ = setListValue(main.map_, None)
     main.using_headers_ = True
+    main.width_ = setListValue(main.width_, None)
 
-    cli.ignore_stop_ = False
-    cli.ignore_stop_reset_ = False
-    cli.skip_testing_ = False
-    cli.test_force_quiet_ = False
-    cli.test_force_verbose_ = False
+    if full_reset:
+        main.comment_mode_ = setListValue(main.comment_mode_, 0)
+        main.elements_ = None
+        main.goto_ = setListValue(main.goto_, None)
+        main.infomsg_ = setListValue(main.infomsg_, True)
+        main.output_ = setListValue(main.output_, True)
+        main.read_inline_ = False
+        main.read_path_ = setListValue(main.read_path_, None)
+        main.running_ = setListValue(main.running_, True)
+        main.timer_ = setListValue(main.timer_, False)
+        main.timer_label_ = setListValue(main.timer_label_, None)
+        main.timer_ts_ = setListValue(main.timer_ts_, None)
+
+        cli.ignore_stop_ = False
+        cli.ignore_stop_reset_ = False
+        cli.skip_testing_ = False
+        cli.test_force_quiet_ = False
+        cli.test_force_verbose_ = False
+
+# only update current sandbox environment values
+def setListValue(list, value):
+    if list == []:
+        list = [value]
+    else:
+        list[-1] = value
+    return list
 
 ################################################################################
 # class methods to set text colors

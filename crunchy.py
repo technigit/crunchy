@@ -10,12 +10,12 @@
 #
 ################################################################################
 
-import fileinput, re, traceback
+import fileinput, re, readline, traceback
 
 import core
-core.main.version_ = 'v0.0.22'
+core.main.version_ = 'v0.0.23'
 
-from core_functions import showInfo, parseOptions, skipLine, errorMessage
+from core_functions import checkInteractivity, showInfo, parseOptions, skipLine, errorMessage
 
 # abstraction layer for plugins
 import bridge
@@ -27,11 +27,19 @@ import bridge
 def processData():
     should_stop = True
     try:
-        with fileinput.FileInput(files=(filenames), mode='r') as input:
-            for line in input:
-                line = re.sub('\n', '', line)
-                if not skipLine(line): bridge.plugin.parseLine(line)
-                if not core.main.running_[-1]: break
+        if core.main.interactive_:
+            line = input(core.main.interactive_prompt_)
+            if not skipLine(line): bridge.plugin.parseLine(line)
+            should_stop = False
+        else:
+            with fileinput.FileInput(files=(filenames), mode='r') as lines:
+                for line in lines:
+                    line = re.sub('\n', '', line)
+                    if not skipLine(line): bridge.plugin.parseLine(line)
+                    if not core.main.running_[-1]: break
+    except EOFError:
+        print()
+        should_stop = True
     except FileNotFoundError as e:
         errorMessage('Input file not found: {0}'.format(e.filename))
     except IndexError:
@@ -61,11 +69,12 @@ core.reset()
 core.testing.reset()
 bridge.usePlugin('shell')
 
-# show information when starting in interactive mode
-showInfo()
-
 # process command-line options
 filenames = parseOptions()
+
+# show information when starting in interactive mode
+core.main.interactive_ = checkInteractivity(filenames)
+showInfo()
 
 # main parsing loop
 while core.main.running_[-1]:
