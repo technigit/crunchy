@@ -55,9 +55,9 @@ def parseMyDirective(line):
 
     if cmd == 'example':
         if argtrim:
-            infoMessage('This is an example directive output acting on "{0}"'.format(argtrim))
+            infoMessage(f"This is an example directive output acting on '{argtrim}'")
         else:
-            infoMessage('Usage: &example <text>')
+            p.invalidUsage('&example <text>')
 
     elif cmd == 'stats':
         if argtrim:
@@ -71,7 +71,7 @@ def parseMyDirective(line):
                 if core.main.output_[-1]:
                     printLine(mapElements(averages))
         else:
-            infoMessage('Usage: &stats <type>')
+            p.invalidUsage('&stats <type>')
 
     ####################
 
@@ -92,7 +92,7 @@ def parseOption(option, parameter):
         infoMessage('This is an example option output with no parameters.')
         result = [True, False]
     elif option in ['-eop', '--example-option-parameter']:
-        infoMessage('This is an example option output with a parameter: {0}'.format(parameter))
+        infoMessage(f"This is an example option output with a parameter: {parameter}")
         result = [True, True]
     return result
 

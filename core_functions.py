@@ -153,7 +153,7 @@ def preParse(line):
             core.main.headers_[-1] = makeHeaders()
             core.main.header_mode_ = True
         if core.main.headers_[-1] == None:
-            errorMessage('Invalid header configuration: {0}'.format(line))
+            errorMessage(f"Invalid header configuration: {line}")
             if not core.main.interactive_:
                 core.main.running_[-1] = False
                 popEnv()
@@ -182,15 +182,27 @@ def isDirective(line):
 class Parser:
     def __init__(self):
         self.done = True
+        self.usage = None
 
     def parseDirective(self, line):
         self.preParseDirective(line)
         if not self.done:
-            self.line = line
-            self.invalidDirective()
+            if self.usage:
+                self.invalidUsage()
+            else:
+                self.line = line
+                self.invalidDirective()
 
     def invalidDirective(self):
         errorMessage(f"Invalid directive: {self.line}")
+
+    def invalidUsage(self, plugin_usage = None):
+        if self.usage != None:
+            general = 'General ' if self.usage != None and plugin_usage != None else ''
+            infoMessage(f"{general}Usage: {self.usage}")
+        if plugin_usage != None:
+            plugin = 'Plugin ' if self.usage != None and plugin_usage != None else ''
+            infoMessage(f"{plugin}Usage: {plugin_usage}")
 
     def preParseDirective(self, line):
         self.line = line
@@ -249,7 +261,7 @@ class Parser:
             if argtrim:
                 infoMessage("Skipping to '{0}'.".format(core.main.goto_[-1]))
             else:
-                infoMessage('Usage: &goto <label>')
+                self.invalidUsage('&goto <label>')
 
         ####################
 
@@ -294,7 +306,7 @@ class Parser:
             else:
                 show_usage = True
             if show_usage:
-                infoMessage('Usage: &map <int><space><space><int>...')
+                self.invalidUsage('&map <int><space><space><int>...')
 
         ####################
 
@@ -304,8 +316,8 @@ class Parser:
         elif cmd == 'output' and arg == 'off':
             infoMessage('Output mode is off.')
             core.main.output_[-1] = False
-        elif cmd =='output':
-            infoMessage('Usage: &output on|off')
+        elif cmd == 'output':
+            self.invalidUsage('&output on|off')
 
         ####################
 
@@ -345,39 +357,59 @@ class Parser:
                     else:
                         unrecognizedOption(option)
                 read_source = argtrim
+                read_sources = read_source.split(' ')
+                s = 's' if len(read_sources) > 1 else ''
+                inline = ' (inline mode)' if core.main.read_inline_ else ''
                 if core.main.read_path_[-1]:
-                    read_source = core.main.read_path_[-1] + '/' + argtrim
+                    for i, rs in enumerate(read_sources):
+                        read_sources[i] = core.main.read_path_[-1] + '/' + rs
                 if core.main.max_read_depth_ > 0:
                     core.main.max_read_depth_ = core.main.max_read_depth_ - 1
-                    infoMessage("Reading file '{0}'{1}.".format(read_source, ' (inline mode)' if core.main.read_inline_ else ''))
-                    if exists(read_source):
-                        f = open(read_source, 'r')
-                        pushEnv()
-                        try:
-                            for read_line in f:
+                    infoMessage(f"Reading file{s}: {read_source}{inline}")
+                    pushEnv()
+                    try:
+                        with fileinput.FileInput(files=(read_sources), mode='r') as read_lines:
+                            for read_line in read_lines:
                                 read_line = re.sub('\n', '', read_line)
                                 if not skipLine(read_line): bridge.plugin.parseLine(read_line)
                                 if not core.main.running_[-1]: break
-                        except IndexError:
-                            errorMessage('{0}: Badly formed data: {1}'.format(cmd, read_line), True)
-                        except ValueError:
-                            errorMessage('{0}: Invalid input: {1}'.format(cmd, read_line), True)
-                        except:
-                            errorMessage('{0}: Unexpected error.'.format(cmd), True)
-                            traceback.print_exc()
-                        finally:
-                            f.close()
-                            if core.testing.testing_[-1]:
-                                core.testing.testStop()
-                            popEnv()
-                            infoMessage('Finished{0} reading file {1}.'.format(' inline' if core.main.read_inline_ else '', read_source))
-                    else:
-                        errorMessage("{0}: File '{1}' does not exist.".format(cmd, read_source), True)
+                    except FileNotFoundError as e:
+                        errorMessage(f"{cmd}: Input file not found: {e.filename}")
+                    except IndexError:
+                        errorMessage(f"{cmd}: Badly formed data: {read_line}", True)
+                    except ValueError:
+                        errorMessage(f"{cmd}: Invalid input: {read_line}", True)
+                    except:
+                        errorMessage(f"{cmd}: Unexpected error.", True)
+                        traceback.print_exc()
+                    finally:
+                        if core.testing.testing_[-1]:
+                            core.testing.testStop()
+                        popEnv()
+                        infoMessage(f"Finished reading file{s}: {read_source}{inline}")
                     core.main.max_read_depth_ = core.main.max_read_depth_ + 1
                 else:
-                    errorMessage('{0}: Nested level too deep; will not read {1}.'.format(cmd, read_source), True)
+                    errorMessage(f"{cmd}: Nested level too deep; will not read {read_source}.")
             else:
-                infoMessage('Usage: &read <filename>')
+                self.invalidUsage('&read <filenames>')
+
+        ####################
+
+        elif cmd == 'set':
+            show_usage = False
+            if argtrim:
+                parts = argtrim.split()
+                if len(parts) > 1:
+                    if (parts[0] == 'prompt'):
+                        m = re.search('^.*prompt\s(.*)$', arg)
+                        core.main.interactive_prompt_ = m.group(1)
+                    else:
+                        show_usage = True
+            else:
+                show_usage = True
+            if show_usage:
+                self.done = False
+                self.usage = '&set [ prompt <string> ]'
 
         ####################
 
@@ -543,7 +575,7 @@ def parseOptions(argv = sys.argv):
                     usePlugin(plugin_name)
                     skip = True
                 else:
-                    errorMessage('Parameter expected: {0}'.format(option))
+                    errorMessage(f"Parameter expected: {option}")
                     printLine()
                     showHelp('usage', True)
             elif option in ['-vv']:
@@ -573,7 +605,7 @@ def parseOptions(argv = sys.argv):
                 # result[1] = skip next word (option parameter)
                 result = bridge.plugin.parseOption(option, parameter)
                 if result[0] == False:
-                    errorMessage('Unknown option: {0}'.format(option))
+                    errorMessage(f"Unknown option: {option}")
                     printLine()
                     showHelp('usage', True)
                 else:
@@ -584,7 +616,7 @@ def parseOptions(argv = sys.argv):
 
 def unrecognizedOption(option):
     if option != '':
-        errorMessage('Unrecognized option: {0}'.format(option))
+        errorMessage(f"Unrecognized option: {option}")
 
 ################################################################################
 # send data to the plugin for processing (from the &cli directive)
@@ -599,13 +631,12 @@ def processDataFromDirective(filenames):
             for line in input:
                 line = re.sub('\n', '', line)
                 if not skipLine(line): bridge.plugin.parseLine(line)
-                #if not core.main.running_[-1]: break
     except FileNotFoundError as e:
-        errorMessage('cli: Input file not found: {0}'.format(e.filename))
+        errorMessage(f"cli: Input file not found: {e.filename}")
     except IndexError:
-        errorMessage('cli: Badly formed data: {0}'.format(line))
+        errorMessage(f"cli: Badly formed data: {line}")
     except ValueError:
-        errorMessage('cli: Invalid input: {0}'.format(line))
+        errorMessage(f"cli: Invalid input: {line}")
     except KeyboardInterrupt:
         errorMessage('Interrupted.')
     except:
@@ -700,7 +731,7 @@ def showHelp(topic, stop_running = False):
         for line in helpfile:
             print(textwrap.fill(line, core.main.terminal_width_))
     except FileNotFoundError:
-        errorMessage("No help file for '{0}' could be found.".format(topic), True)
+        errorMessage("No help file for '{topic}' could be found.", True)
     finally:
         if helpfile:
             helpfile.close()

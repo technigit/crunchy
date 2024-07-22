@@ -13,7 +13,7 @@
 import fileinput, re, readline, traceback
 
 import core
-core.main.version_ = 'v0.0.23'
+core.main.version_ = 'v0.0.24'
 
 from core_functions import checkInteractivity, showInfo, parseOptions, skipLine, errorMessage
 
@@ -24,7 +24,7 @@ import bridge
 # send data to the plugin for processing
 ################################################################################
 
-def processData():
+def processData(filenames):
     should_stop = True
     try:
         if core.main.interactive_:
@@ -54,7 +54,6 @@ def processData():
         errorMessage('Unexpected error.')
         traceback.print_exc()
     finally:
-        fileinput.close()
         if core.testing.testing_[-1]:
             core.testing.testStop()
     if should_stop:
@@ -78,7 +77,7 @@ showInfo()
 
 # main parsing loop
 while core.main.running_[-1]:
-    processData()
+    processData(filenames)
     if not core.main.interactive_:
         break
 

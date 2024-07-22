@@ -89,7 +89,7 @@ def parseMyDirective(line):
             else:
                 infoMessage('Overriding &init directive.')
         else:
-            infoMessage('Usage: &init <float>')
+            p.invalidUsage('&init <float>')
 
     ####################
 
@@ -117,7 +117,7 @@ def parseMyDirective(line):
         else:
             show_usage = True
         if show_usage:
-            infoMessage('Usage: &set catfield <int> | clrfield <int> | decfield <int> | incfield <int>')
+            p.invalidUsage('&set [ catfield <int> | clrfield <int> | decfield <int> | incfield <int> ]')
 
     ####################
 
