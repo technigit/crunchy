@@ -59,7 +59,15 @@ def rjustify(str, width):
     return str.rjust(width)[:width]
 
 def currency(num):
-    return '${:,.2f}'.format(num)
+    try:
+        return core.main.currency_format_.format(num)
+    except:
+        if core.cli.verbose_verbose_:
+            errorMessage(f"Currency error: {num}, {core.main.currency_format_}")
+            traceback.print_exc()
+            core.main.running_[-1] = False
+            popEnv()
+        return 'ERROR'
 
 ################################################################################
 # timer
@@ -199,10 +207,10 @@ class Parser:
     def invalidUsage(self, plugin_usage = None):
         if self.usage != None:
             general = 'General ' if self.usage != None and plugin_usage != None else ''
-            infoMessage(f"{general}Usage: {self.usage}")
+            errorMessage(f"{general}Usage: {self.usage}")
         if plugin_usage != None:
             plugin = 'Plugin ' if self.usage != None and plugin_usage != None else ''
-            infoMessage(f"{plugin}Usage: {plugin_usage}")
+            errorMessage(f"{plugin}Usage: {plugin_usage}")
 
     def preParseDirective(self, line):
         self.line = line
@@ -235,6 +243,7 @@ class Parser:
         ####################
 
         if cmd == 'cd':
+            noOptionsRecognized(options)
             core.main.read_path_[-1] = argtrim
             if core.main.read_path_[-1]:
                 infoMessage("Setting current working directory to '{0}'.".format(core.main.read_path_[-1]))
@@ -257,6 +266,7 @@ class Parser:
         ####################
 
         elif cmd == 'goto':
+            noOptionsRecognized(options)
             core.main.goto_[-1] = argtrim
             if argtrim:
                 infoMessage("Skipping to '{0}'.".format(core.main.goto_[-1]))
@@ -275,6 +285,8 @@ class Parser:
                 for option in options:
                     if option in ['-q', '--quiet']:
                         print_header = False
+                    else:
+                        unrecognizedOption(option)
                 if print_header:
                     bridge.plugin.parseLine('  '.join(core.main.headers_[-1]))
             else:
@@ -283,16 +295,19 @@ class Parser:
         ####################
 
         elif cmd == 'help':
+            noOptionsRecognized(options)
             showHelp(argtrim)
 
         ####################
 
         elif cmd == 'identify':
+            noOptionsRecognized(options)
             infoMessage('Loaded plugin: {0}'.format(bridge.plugin.identify()))
 
         ####################
 
         elif cmd == 'map':
+            noOptionsRecognized(options)
             show_usage = False
             if argtrim:
                 premap = getElements(argtrim)
@@ -311,12 +326,15 @@ class Parser:
         ####################
 
         elif cmd == 'output' and arg == 'on':
+            noOptionsRecognized(options)
             core.main.output_[-1] = True
             infoMessage('Output mode is on.')
         elif cmd == 'output' and arg == 'off':
+            noOptionsRecognized(options)
             infoMessage('Output mode is off.')
             core.main.output_[-1] = False
         elif cmd == 'output':
+            noOptionsRecognized(options)
             self.invalidUsage('&output on|off')
 
         ####################
@@ -396,11 +414,15 @@ class Parser:
         ####################
 
         elif cmd == 'set':
+            noOptionsRecognized(options)
             show_usage = False
             if argtrim:
                 parts = argtrim.split()
                 if len(parts) > 1:
-                    if (parts[0] == 'prompt'):
+                    if (parts[0] == 'currency'):
+                        m = re.search('^.*currency\s(.*)$', arg)
+                        core.main.currency_format_ = m.group(1)
+                    elif (parts[0] == 'prompt'):
                         m = re.search('^.*prompt\s(.*)$', arg)
                         core.main.interactive_prompt_ = m.group(1)
                     else:
@@ -414,6 +436,8 @@ class Parser:
         ####################
 
         elif cmd == 'stop':
+            noOptionsRecognized(options)
+
             # --ignore-stop: continue reading data and ignore the &stop directive
             # otherwise, stop testing and stop running
             if not core.cli.ignore_stop_:
@@ -432,6 +456,7 @@ class Parser:
         ####################
 
         elif cmd == 'timer':
+            noOptionsRecognized(options)
             if argtrim != None:
                 label = ''
                 for element in argtrim.split():
@@ -454,6 +479,8 @@ class Parser:
                 for option in options:
                     if option in ['-q']:
                         quiet = True
+                    else:
+                        unrecognizedOption(option)
                 core.reset(False)
                 usePlugin(argtrim)
                 if not quiet:
@@ -473,8 +500,10 @@ class Parser:
         ####################
 
         elif cmd == 'test' and core.cli.skip_testing_:
+            noOptionsRecognized(options)
             pass
         elif cmd == 'test':
+            noOptionsRecognized(options)
             if argtrim == None:
                 core.testing.testMessage('Usage: &{0} <parameters>'.format(cmd))
             elif argtrim.startswith('start'):
@@ -519,7 +548,13 @@ class Parser:
         ####################
 
         elif cmd == 'debug':
-            core.testing.debug(argtrim)
+            fullname = False
+            for option in options:
+                if option in ['-fn', '--full-name']:
+                    fullname = True
+                else:
+                    unrecognizedOption(option)
+            core.testing.debug(argtrim, fullname)
 
         ####################
 
@@ -528,6 +563,8 @@ class Parser:
             for option in options:
                 if option in ['-q']:
                     quiet = True
+                else:
+                    unrecognizedOption(option)
             core.main.infomsg_[-1] = True
             if not quiet:
                 infoMessage('Infomsg mode is on.')
@@ -617,6 +654,10 @@ def parseOptions(argv = sys.argv):
 def unrecognizedOption(option):
     if option != '':
         errorMessage(f"Unrecognized option: {option}")
+
+def noOptionsRecognized(options):
+    for option in options:
+        unrecognizedOption(option)
 
 ################################################################################
 # send data to the plugin for processing (from the &cli directive)
@@ -731,7 +772,7 @@ def showHelp(topic, stop_running = False):
         for line in helpfile:
             print(textwrap.fill(line, core.main.terminal_width_))
     except FileNotFoundError:
-        errorMessage("No help file for '{topic}' could be found.", True)
+        errorMessage(f"No help file for '{topic}' could be found.", True)
     finally:
         if helpfile:
             helpfile.close()

@@ -39,6 +39,7 @@ class main():
     timer_label_ = []
     timer_ts_ = []
 
+    currency_format_ = '${:,.2f}'
     header_mode_ = None
     interactive_ = False
     interactive_prompt_ = '> '
