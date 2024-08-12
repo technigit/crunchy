@@ -20,6 +20,7 @@ import testing_functions
 ################################################################################
 
 class main():
+    formats_ = []
     headers_ = []
     justify_ = []
     line_parse_delimiter_ = None
@@ -40,6 +41,7 @@ class main():
     timer_ts_ = []
 
     currency_format_ = '${:,.2f}'
+    percentage_format_ = '{:.2f}%'
     header_mode_ = None
     interactive_ = False
     interactive_prompt_ = '> '
@@ -70,6 +72,7 @@ class cli():
     test_force_verbose_ = None
 
 def reset(full_reset = True):
+    main.formats_ = setListValue(main.formats_, None)
     main.headers_ = setListValue(main.headers_, None)
     main.justify_ = setListValue(main.justify_, None)
     main.line_parse_delimiter_ = '\s\s\s*'

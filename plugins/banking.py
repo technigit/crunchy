@@ -16,6 +16,7 @@ import core
 from core_functions import ljustify, rjustify, currency
 from core_functions import preParse
 from core_functions import Parser, unrecognizedOption
+from core_functions import formatElementByValue
 from core_functions import isDirective
 from core_functions import printLine
 from core_functions import infoMessage, errorMessage
@@ -400,7 +401,14 @@ def pluginMain(line):
         pass
 
     if core.main.output_[-1]:
-        printLine('{0}{1:8.2f} {2:8.2f}'.format(out, my.fulbal_[-1], my.clrbal_[-1]))
+        fulbal = '{:8.2f}'.format(my.fulbal_[-1])
+        clrbal = '{:8.2f}'.format(my.clrbal_[-1])
+        if len(core.main.formats_[-1]) == len(core.main.elements_) + 2:
+            fulbal_index = len(core.main.elements_)
+            clrbal_index = len(core.main.elements_) + 1
+            fulbal = formatElementByValue(fulbal_index, my.fulbal_[-1])
+            clrbal = formatElementByValue(clrbal_index, my.clrbal_[-1])
+        printLine('{0}{1} {2}'.format(out, fulbal, clrbal))
 
 ####################
 # start here

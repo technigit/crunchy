@@ -41,13 +41,23 @@ def checkInteractivity(filenames):
 ################################################################################
 
 def formatElement(index, elements):
+    element = elements[index]
+    return formatElementByValue(index, element)
+
+def formatElementByValue(index, element):
+    if isFloat(element) and not isInteger(element):
+        if core.main.formats_[-1][index] != None:
+            if '$' in core.main.formats_[-1][index]:
+                element = currency(float(element))
+            elif '%' in core.main.formats_[-1][index]:
+                element = percentage(float(element))
     align = core.main.justify_[-1][index]
     if align == '<':
-        return ljustify(str(elements[index]), core.main.width_[-1][index]) + ' '
+        return ljustify(str(element), core.main.width_[-1][index]) + ' '
     if align == '|':
-        return cjustify(str(elements[index]), core.main.width_[-1][index]) + ' '
+        return cjustify(str(element), core.main.width_[-1][index]) + ' '
     if align == '>':
-        return rjustify(str(elements[index]), core.main.width_[-1][index]) + ' '
+        return rjustify(str(element), core.main.width_[-1][index]) + ' '
 
 def ljustify(str, width):
     return str.ljust(width)[:width]
@@ -68,6 +78,31 @@ def currency(num):
             core.main.running_[-1] = False
             popEnv()
         return 'ERROR'
+
+def percentage(num):
+    try:
+        return core.main.percentage_format_.format(num)
+    except:
+        if core.cli.verbose_verbose_:
+            errorMessage(f"Percentage error: {num}, {core.main.percentage_format_}")
+            traceback.print_exc()
+            core.main.running_[-1] = False
+            popEnv()
+        return 'ERROR'
+
+def isInteger(num):
+    try:
+        intnum = int(num)
+        return intnum == num
+    except:
+        return False
+
+def isFloat(num):
+    try:
+        float(num)
+        return True
+    except:
+        return False
 
 ################################################################################
 # timer
@@ -132,10 +167,15 @@ def getElements(line):
 ################################################################################
 
 def makeHeaders():
-    core.main.width_[-1] = [None] * len(core.main.elements_)
+    core.main.formats_[-1] = [None] * len(core.main.elements_)
     core.main.justify_[-1] = [None] * len(core.main.elements_)
+    core.main.width_[-1] = [None] * len(core.main.elements_)
     for i, element in enumerate(core.main.elements_):
         element = element.strip()
+        m = re.search('^(\W)*(\w.*)$', element)
+        if m:
+            core.main.formats_[-1][i] = m.group(1)
+            element = m.group(2)
         m = re.search('^.*\D(\d*)$', element)
         if m:
             core.main.width_[-1][i] = int(m.group(1))
@@ -151,24 +191,40 @@ def makeHeaders():
     return core.main.elements_
 
 ################################################################################
-# process headers and mapping
+# process headers
+#
+#    - Stores elements in core.main.elements_ for internal processing.
+#    - Returns a mapped set of elements if there is an output.
+#    - Returns None if there is no output.
 ################################################################################
 
 def preParse(line):
+    # break the line down into its constituent parts
     core.main.elements_ = getElements(line)
-    if core.main.using_headers_:
-        if core.main.headers_[-1] == None:
-            core.main.headers_[-1] = makeHeaders()
-            core.main.header_mode_ = True
-        if core.main.headers_[-1] == None:
-            errorMessage(f"Invalid header configuration: {line}")
-            if not core.main.interactive_:
-                core.main.running_[-1] = False
-                popEnv()
-            return
-        return mapElements(core.main.elements_)
-    else:
-        return ''
+
+    # current plugin not using headers: done, no mapping needed
+    if not core.main.using_headers_:
+        return
+
+    # if we don't have a header yet, then we need to get one now
+    if core.main.headers_[-1] == None:
+        core.main.headers_[-1] = makeHeaders()
+        core.main.header_mode_ = True
+
+    # if we still don't have a header at this point, then the data is misconfigured
+    if core.main.headers_[-1] == None:
+        errorMessage(f"Invalid header configuration: {line}")
+        if not core.main.interactive_:
+            core.main.running_[-1] = False
+            popEnv()
+        return
+
+    # return the header or data elements, after mapping
+    return mapElements(core.main.elements_)
+
+################################################################################
+# map header/data elements to rearrange "columns" according to specifications
+################################################################################
 
 def mapElements(elements):
     out = ''
@@ -422,6 +478,9 @@ class Parser:
                     if (parts[0] == 'currency'):
                         m = re.search('^.*currency\s(.*)$', arg)
                         core.main.currency_format_ = m.group(1)
+                    elif (parts[0] == 'percentage'):
+                        m = re.search('^.*percentage\s(.*)$', arg)
+                        core.main.percentage_format_ = m.group(1)
                     elif (parts[0] == 'prompt'):
                         m = re.search('^.*prompt\s(.*)$', arg)
                         core.main.interactive_prompt_ = m.group(1)
@@ -793,6 +852,7 @@ def pushEnv():
         core.main.goto_,
         core.main.read_path_,
         core.main.elements_,
+        core.main.formats_,
         core.main.headers_,
         core.main.justify_,
         core.main.width_,
@@ -821,6 +881,7 @@ def popEnv():
         core.main.goto_,
         core.main.read_path_,
         core.main.elements_,
+        core.main.formats_,
         core.main.headers_,
         core.main.justify_,
         core.main.width_,
