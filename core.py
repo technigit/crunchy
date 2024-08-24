@@ -23,6 +23,7 @@ class main():
     formats_ = []
     headers_ = []
     justify_ = []
+    padding_ = []
     line_parse_delimiter_ = None
     map_ = []
     using_headers_ = None
@@ -45,6 +46,7 @@ class main():
     header_mode_ = None
     interactive_ = False
     interactive_prompt_ = '> '
+    margin_ = ' '
     max_read_depth_ = 5
     source_path_ =  str(Path(__file__).resolve().parent)
     terminal_width_ = shutil.get_terminal_size().columns
@@ -75,6 +77,7 @@ def reset(full_reset = True):
     main.formats_ = setListValue(main.formats_, None)
     main.headers_ = setListValue(main.headers_, None)
     main.justify_ = setListValue(main.justify_, None)
+    main.padding_ = setListValue(main.padding_, None)
     main.line_parse_delimiter_ = '\s\s\s*'
     main.map_ = setListValue(main.map_, None)
     main.using_headers_ = True

@@ -45,28 +45,36 @@ def formatElement(index, elements):
     return formatElementByValue(index, element)
 
 def formatElementByValue(index, element):
+    padding = ' '
     if isFloat(element) and not isInteger(element):
-        if core.main.formats_[-1][index] != None:
-            if '$' in core.main.formats_[-1][index]:
+        formats = core.main.formats_[-1][index]
+        if not core.main.header_mode_:
+            padding = core.main.padding_[-1][index]
+        if formats != None:
+            if '~' in formats:
+                element = str(round(float(element)))
+            if '$' in formats:
                 element = currency(float(element))
-            elif '%' in core.main.formats_[-1][index]:
+            elif '%' in formats:
                 element = percentage(float(element))
+    elif element.strip() != '' and not core.main.header_mode_:
+        padding = core.main.padding_[-1][index]
     align = core.main.justify_[-1][index]
     if align == '<':
-        return ljustify(str(element), core.main.width_[-1][index]) + ' '
-    if align == '|':
-        return cjustify(str(element), core.main.width_[-1][index]) + ' '
+        return ljustify(str(element), core.main.width_[-1][index], padding) + core.main.margin_
+    if align == '|' or align == '^':
+        return cjustify(str(element), core.main.width_[-1][index], padding) + core.main.margin_
     if align == '>':
-        return rjustify(str(element), core.main.width_[-1][index]) + ' '
+        return rjustify(str(element), core.main.width_[-1][index], padding) + core.main.margin_
 
-def ljustify(str, width):
-    return str.ljust(width)[:width]
+def ljustify(str, width, padding = ' '):
+    return str.ljust(width, padding)[:width]
 
-def cjustify(str, width):
-    return str.center(width)[:width]
+def cjustify(str, width, padding = ' '):
+    return str.center(width, padding)[:width]
 
-def rjustify(str, width):
-    return str.rjust(width)[:width]
+def rjustify(str, width, padding = ' '):
+    return str.rjust(width, padding)[:width]
 
 def currency(num):
     try:
@@ -153,13 +161,20 @@ def timerElapsed(start, stop):
 ################################################################################
 
 def getElements(line):
-    delim = '~'
-    line = re.sub('^\s*', '', line)
-    line = re.sub(core.main.line_parse_delimiter_, delim, line)
+    # non-printable null character for internal parsing
+    delim = '\x00'
+
+    # convert the delimiter into delim and split the line into elements
+    # this approach allows multi-character delimiters
+    line = re.sub(core.main.line_parse_delimiter_, delim, line.lstrip())
     core.main.elements_ = line.split(delim)
+
+    # dashes are placeholders for empty fields
     for i, element in enumerate(core.main.elements_):
         if element == '-':
             core.main.elements_[i] = ' '
+
+    # now we have the elements to send back
     return core.main.elements_
 
 ################################################################################
@@ -167,27 +182,46 @@ def getElements(line):
 ################################################################################
 
 def makeHeaders():
+    # initialize header attributes
     core.main.formats_[-1] = [None] * len(core.main.elements_)
     core.main.justify_[-1] = [None] * len(core.main.elements_)
+    core.main.padding_[-1] = [None] * len(core.main.elements_)
     core.main.width_[-1] = [None] * len(core.main.elements_)
+
+    # iterate over header specification
     for i, element in enumerate(core.main.elements_):
+
+        # prepare the element for clean parsing
         element = element.strip()
-        m = re.search('^(\W)*(\w.*)$', element)
-        if m:
-            core.main.formats_[-1][i] = m.group(1)
-            element = m.group(2)
-        m = re.search('^.*\D(\d*)$', element)
-        if m:
-            core.main.width_[-1][i] = int(m.group(1))
-            element = re.search('^(.*\D)\d*$', element).group(1)
-            core.main.justify_[-1][i] = '>'
-            if re.search('\<$', element):
-                core.main.justify_[-1][i] = '<'
-            if re.search('\|$', element):
-                core.main.justify_[-1][i] = '|'
-            core.main.elements_[i] = re.sub('[\<\|\>]$', '', element)
+
+        # parse the header element specification
+        m = re.search('^(#?)([~$%]*)(.*[a-zA-Z])([<|^>]?)(\d+)(\D?)$', element)
+
+        # valid format
+        if m != None:
+
+            # extract specification parameters
+            m_comment = m.group(1)
+            m_formats = m.group(2)
+            m_heading = m.group(3)
+            m_justify = m.group(4)
+            m_width = m.group(5)
+            m_padding = m.group(6)
+            if m_justify == '': m_justify = '>'
+            if m_padding == '': m_padding = ' '
+
+            # store specification parameters
+            core.main.elements_[i] = m_comment + m_heading
+            core.main.formats_[-1][i] = m_formats
+            core.main.justify_[-1][i] = m_justify
+            core.main.width_[-1][i] = int(m_width)
+            core.main.padding_[-1][i] = m_padding
+
+        # invalid format
         else:
             return None
+
+    # return extracted headers
     return core.main.elements_
 
 ################################################################################
@@ -244,6 +278,8 @@ def isDirective(line):
     return re.search('^\s*&', line)
 
 class Parser:
+    # parser class to be set up as an object that can be used by plugins
+
     def __init__(self):
         self.done = True
         self.usage = None
@@ -256,6 +292,24 @@ class Parser:
             else:
                 self.line = line
                 self.invalidDirective()
+
+    def parseSetting(self, setting, arg):
+        # standardized parsing of the &set directive
+        # the calling function guarantees a value parameter
+
+        # &set <setting> "<value>"
+        m = re.search('^.*' + setting + '\s\"(.*)\"$', arg)
+
+        # &set <setting> '<value>'
+        if m == None:
+            m = re.search('^.*' + setting + '\s\'(.*)\'$', arg)
+
+        # &set <setting> <value>
+        if m == None:
+            m = re.search('^.*' + setting + '\s(.*)$', arg)
+
+        # return the value
+        return m.group(1)
 
     def invalidDirective(self):
         errorMessage(f"Invalid directive: {self.line}")
@@ -476,14 +530,13 @@ class Parser:
                 parts = argtrim.split()
                 if len(parts) > 1:
                     if (parts[0] == 'currency'):
-                        m = re.search('^.*currency\s(.*)$', arg)
-                        core.main.currency_format_ = m.group(1)
+                        core.main.currency_format_ = self.parseSetting('currency', arg)
                     elif (parts[0] == 'percentage'):
-                        m = re.search('^.*percentage\s(.*)$', arg)
-                        core.main.percentage_format_ = m.group(1)
+                        core.main.percentage_format_ = self.parseSetting('percentage', arg)
+                    elif (parts[0] == 'margin'):
+                        core.main.margin_ = self.parseSetting('margin', arg)
                     elif (parts[0] == 'prompt'):
-                        m = re.search('^.*prompt\s(.*)$', arg)
-                        core.main.interactive_prompt_ = m.group(1)
+                        core.main.interactive_prompt_ = self.parseSetting('prompt', arg)
                     else:
                         show_usage = True
             else:
@@ -855,6 +908,7 @@ def pushEnv():
         core.main.formats_,
         core.main.headers_,
         core.main.justify_,
+        core.main.padding_,
         core.main.width_,
         core.main.map_,
         core.main.timer_,
@@ -884,6 +938,7 @@ def popEnv():
         core.main.formats_,
         core.main.headers_,
         core.main.justify_,
+        core.main.padding_,
         core.main.width_,
         core.main.map_
     ])

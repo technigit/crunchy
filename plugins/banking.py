@@ -408,7 +408,7 @@ def pluginMain(line):
             clrbal_index = len(core.main.elements_) + 1
             fulbal = formatElementByValue(fulbal_index, my.fulbal_[-1])
             clrbal = formatElementByValue(clrbal_index, my.clrbal_[-1])
-        printLine('{0}{1} {2}'.format(out, fulbal, clrbal))
+        printLine(f"{out}{fulbal}{clrbal}")
 
 ####################
 # start here
