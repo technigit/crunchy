@@ -10,10 +10,10 @@
 #
 ################################################################################
 
-import fileinput, re, readline, traceback
+import fileinput, re, traceback
 
 import core
-core.main.version_ = 'v0.0.27'
+core.main.version_ = 'v0.0.28'
 
 from core_functions import checkInteractivity, showInfo, parseOptions, skipLine, errorMessage
 

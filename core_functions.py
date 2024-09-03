@@ -171,7 +171,7 @@ def getElements(line):
 
     # dashes are placeholders for empty fields
     for i, element in enumerate(core.main.elements_):
-        if element == '-':
+        if element == core.main.line_element_placeholder_:
             core.main.elements_[i] = ' '
 
     # now we have the elements to send back
@@ -631,7 +631,7 @@ class Parser:
                     else:
                         core.testing.testMessage('Test filename not specified.')
                 else:
-                    testing.testMessage('Test is already running ({0}).'.format(core.testing.test_filename_[-1]))
+                    core.testing.testMessage('Test is already running ({0}).'.format(core.testing.test_filename_[-1]))
             elif argtrim == 'pause':
                 if core.testing.testing_[-1]:
                     core.testing.test_pause_[-1] = True
@@ -648,6 +648,13 @@ class Parser:
                 if not core.cli.test_force_quiet_:
                     core.testing.test_verbose_[-1] = True
                     core.testing.testMessage('Test mode set to verbose.')
+            elif argtrim.startswith('versions'):
+                m = re.search('^versions\s+(.*)$', argtrim)
+                if m:
+                    range = m.group(1)
+                    core.testing.testVersions(range)
+                else:
+                    core.testing.testMessage('Version range not specified.')
             elif argtrim == 'quiet':
                 if not core.cli.test_force_verbose_:
                     core.testing.test_verbose_[-1] = False
@@ -655,7 +662,7 @@ class Parser:
             elif argtrim == 'stop':
                 core.testing.testStop()
             else:
-                core.testing.testMessage('{0}: invalid parameter.',format(cmd))
+                core.testing.testMessage('{0}: invalid parameter.'.format(cmd))
 
         ####################
 
@@ -715,7 +722,7 @@ def parseOptions(argv = sys.argv):
                 core.cli.ignore_stop_reset_ = True
             elif option in ['-is0']: # undocumented, for testing purposes
                 core.cli.ignore_stop_ = False
-            elif option in ['-isr0']: #undocumented, for testing purposes
+            elif option in ['-isr0']: # undocumented, for testing purposes
                 core.cli.ignore_stop_ = False
                 core.cli.ignore_stop_reset_ = False
             elif option in ['-up', '--use-plugin']:

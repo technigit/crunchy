@@ -25,6 +25,7 @@ class main():
     justify_ = []
     padding_ = []
     line_parse_delimiter_ = None
+    line_element_placeholder_ = None
     map_ = []
     using_headers_ = None
     width_ = []
@@ -63,6 +64,7 @@ class testing():
     reset = testing_functions.reset
     testMessage = testing_functions.testMessage
     testStop = testing_functions.testStop
+    testVersions = testing_functions.testVersions
     debug = testing_functions.debug
 
 class cli():
@@ -79,6 +81,7 @@ def reset(full_reset = True):
     main.justify_ = setListValue(main.justify_, None)
     main.padding_ = setListValue(main.padding_, None)
     main.line_parse_delimiter_ = '\s\s\s*'
+    main.line_element_placeholder_ = '-'
     main.map_ = setListValue(main.map_, None)
     main.using_headers_ = True
     main.width_ = setListValue(main.width_, None)

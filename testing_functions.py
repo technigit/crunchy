@@ -38,6 +38,13 @@ def testStop(verbose = False):
         core.testing.test_f_[-1].close()
     core.testing.test_f_[-1] = None
     testMessage('Test stopped.', verbose)
+    testfile = core.testing.test_filename_[-1]
+    
+    # if there is no testfile, we have no testing statistics
+    if testfile == None or testfile == '':
+        return
+    
+    # show testing statistics
     total = core.testing.test_pass_[-1] + core.testing.test_fail_[-1]
     s = 's' if total != 1 else ''
     tested = str(total) + ' line' + s + ' tested: '
@@ -49,10 +56,74 @@ def testStop(verbose = False):
         failed = core.ANSI.FG_RED + str(core.testing.test_fail_[-1]) + ' failed' + core.ANSI.FG_YELLOW + ' :: '
     else:
         failed = str(core.testing.test_fail_[-1]) + ' failed :: '
-    testfile = core.testing.test_filename_[-1]
     text_offset = 0 if total < 1000 else 2 # make room for big numbers
     testMessage(rjustify(tested, 18 + text_offset) + rjustify(passed, 24 + text_offset) + failed + testfile, True)
     core.testing.test_filename_[-1] = ''
+
+def testVersions(ranges):
+    # make sure a test is running
+    if not core.testing.test_filename_[-1]:
+        testMessage(f"&test versions {ranges}:", True)
+        testMessage('  Please start a test first.', True)
+        testStop()
+        return
+
+    # get the version and break it down
+    version = core.main.version_[1:].split('.')
+    num_segments = len(version)
+    matching = False
+
+    # break down the ranges into space-separated entries
+    entries = ranges.split(' ')
+
+    # examine each entry
+    for i, entry in enumerate(entries):
+        num_matching = 0
+
+        # the initial v is optional
+        if entry.startswith('v'):
+            entry = entry[1:]
+
+        # skip if the user types two spaces in a row
+        if entry == '':
+            continue
+        
+        # break down the entry into dot-separated segments
+        segments = entry.split('.')
+        
+        # fail this entry if we find the wrong number of segments
+        if len(segments) != num_segments:
+            continue
+
+        # examine each segment
+        for j, segment in enumerate(segments):
+        
+            # wildcard
+            if entry == '*' or version[j] == segment:
+                num_matching = num_matching + 1
+            
+            # numerical ranges
+            else:
+                if '-' in segment:
+                    dashes = segment.split('-')
+                    first = int(dashes[0])
+                    last = int(dashes[1])
+                    if int(version[j]) >= first and int(version[j]) <= last:
+                        num_matching = num_matching + 1
+            
+            # it matches!
+            if num_matching == num_segments:
+                matching = True
+                break
+
+    # if we do not find a match, stop the test
+    if not matching:
+        this_version = core.main.version_
+        if this_version.startswith('v'):
+            this_version = this_version[1:]
+        testMessage(f"This test was not designed for version {this_version}. Expected: {ranges}", True)
+        core.testing.test_filename_[-1] = None
+        testStop()
 
 def listVars_(class_obj, filters, fullname = False, classname = None):
     # 'testing' is the longest built-in class name
