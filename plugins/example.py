@@ -8,91 +8,95 @@
 #
 # Example plugin
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
 import core
-from core_functions import preParse, mapElements
+from core_functions import pre_parse, map_elements
 from core_functions import Parser
-from core_functions import isDirective
-from core_functions import printLine
-from core_functions import infoMessage, errorMessage
+from core_functions import is_directive
+from core_functions import print_line
+from core_functions import info_message
 
-def identify(): return 'example'
+def identify():
+    return 'example'
 
-class my():
+class My():
     sums_ = []
     rows_ = None
 
 def reset():
-    my.sums_ = [[]]
-    my.rows_ = 0
+    My.sums_ = [[]]
+    My.rows_ = 0
 
-class cli():
+class Cli():
     example_option = True
 
 reset()
 
-def getEnv():
+def get_env():
     return [
-        my.sums_
+        My.sums_
     ]
 
 ################################################################################
 # parse plugin-specific directives, but pre-parse for core directives first
 ################################################################################
 
-def parseMyDirective(line):
+def parse_my_directive(line):
     p = Parser()
-    p.preParseDirective(line)
+    p.pre_parse_directive(line)
     if p.done:
         return
-    arg = p.arg
+    #arg = p.arg
     argtrim = p.argtrim
     cmd = p.cmd
-    options = p.options
+    #options = p.options
 
     ####################
 
     if cmd == 'example':
         if argtrim:
-            infoMessage(f"This is an example directive output acting on '{argtrim}'")
+            info_message(f"This is an example directive output acting on '{argtrim}'")
         else:
-            p.invalidUsage('&example <text>')
+            p.invalid_usage('&example <text>')
 
     elif cmd == 'stats':
         if argtrim:
             if argtrim == 'sums':
-                if core.main.output_[-1]:
-                    printLine(mapElements(my.sums_[-1]))
+                if core.Main.output_[-1]:
+                    print_line(map_elements(My.sums_[-1]))
             elif argtrim == 'averages':
                 averages = []
-                for sum in my.sums_[-1]:
-                    averages.append('{0:8.3f}'.format(sum/my.rows_))
-                if core.main.output_[-1]:
-                    printLine(mapElements(averages))
+                for avg_sum in My.sums_[-1]:
+                    averages.append(f"{avg_sum/My.rows_:8.3f}")
+                if core.Main.output_[-1]:
+                    print_line(map_elements(averages))
         else:
-            p.invalidUsage('&stats <type>')
+            p.invalid_usage('&stats <type>')
 
     ####################
 
     else:
-        p.invalidDirective()
+        p.invalid_directive()
 
 ################################################################################
 # add command-line options just for this plugin
 ################################################################################
 
-def parseOption(option, parameter):
+def parse_option(option, parameter):
     # result[0] = known/unknown
     # result[1] = skip next word (option parameter)
     result = [False, False]
-    if parameter == None:
+    if parameter is None:
         parameter = ''
     if option in ['-eo', '--example-option']:
-        infoMessage('This is an example option output with no parameters.')
+        info_message('This is an example option output with no parameters.')
         result = [True, False]
     elif option in ['-eop', '--example-option-parameter']:
-        infoMessage(f"This is an example option output with a parameter: {parameter}")
+        info_message(f"This is an example option output with a parameter: {parameter}")
         result = [True, True]
     return result
 
@@ -100,30 +104,30 @@ def parseOption(option, parameter):
 # plugin-specific parsing
 ################################################################################
 
-def pluginMain(line):
-    out = preParse(line)
-    if core.main.header_mode_:
-        if core.main.output_[-1] and out != None:
-            printLine(out)
-        core.main.header_mode_ = False
+def plugin_main(line):
+    out = pre_parse(line)
+    if core.Main.header_mode_:
+        if core.Main.output_[-1] and out is not None:
+            print_line(out)
+        core.Main.header_mode_ = False
         return
     linesum = 0
-    for i, element in enumerate(core.main.elements_):
-        if len(my.sums_[-1]) >= i + 1:
-            my.sums_[-1][i] += int(element)
+    for i, element in enumerate(core.Main.elements_):
+        if len(My.sums_[-1]) >= i + 1:
+            My.sums_[-1][i] += int(element)
         else:
-            my.sums_[-1].append(int(element))
+            My.sums_[-1].append(int(element))
         linesum += int(element)
-    if core.main.output_[-1]:
-        printLine('{0} {1:8.0f} {2:8.3f}'.format(out, linesum, linesum / len(core.main.elements_)))
-    my.rows_ += 1
+    if core.Main.output_[-1]:
+        print_line(f"{out} {linesum:8.0f} {linesum / len(core.Main.elements_):8.3f}")
+    My.rows_ += 1
 
 ####################
 # start here
 ####################
 
-def parseLine(line):
-    if isDirective(line):
-        parseMyDirective(line)
+def parse_line(line):
+    if is_directive(line):
+        parse_my_directive(line)
     else:
-        pluginMain(line)
+        plugin_main(line)

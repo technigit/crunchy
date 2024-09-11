@@ -8,26 +8,34 @@
 #
 # Shell plugin
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
-from core_functions import Parser, isDirective, infoMessage
+from core_functions import Parser, is_directive, info_message
 
-def identify(): return 'shell'
+def identify():
+    return 'shell'
 
-class my(): pass
-def getEnv(): pass
-def parseOption(option, parameter): return [False, False]
-def reset(): pass
+class My():
+    pass # placeholder
+def get_env():
+    pass # placeholder
+def parse_option(option, parameter):
+    return [False, False] # placeholder
+def reset():
+    pass # placeholder
 
-def parseMyDirective(line):
+def parse_my_directive(line):
     p = Parser()
-    p.parseDirective(line)
+    p.parse_directive(line)
 
-def pluginMain(line):
-    infoMessage(f"{identify()}: This plugin does not process data.")
+def plugin_main(line):
+    info_message(f"{identify()}: This plugin does not process data.")
 
-def parseLine(line):
-    if isDirective(line):
-        parseMyDirective(line)
+def parse_line(line):
+    if is_directive(line):
+        parse_my_directive(line)
     else:
-        pluginMain(line)
+        plugin_main(line)

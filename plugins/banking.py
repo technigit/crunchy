@@ -8,22 +8,26 @@
 #
 # Banking plugin
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
 import re
 
 import core
 from core_functions import ljustify, rjustify, currency
-from core_functions import preParse
-from core_functions import Parser, unrecognizedOption
-from core_functions import formatElementByValue
-from core_functions import isDirective
-from core_functions import printLine
-from core_functions import infoMessage, errorMessage
+from core_functions import pre_parse
+from core_functions import Parser, unrecognized_option
+from core_functions import format_element_by_value
+from core_functions import is_directive
+from core_functions import print_line
+from core_functions import info_message, error_message
 
-def identify(): return 'banking'
+def identify():
+    return 'banking'
 
-class my():
+class My():
     fulbal_ = []
     clrbal_ = []
     catfield_ = []
@@ -34,46 +38,46 @@ class my():
     statvalues_ = []
 
 def reset():
-    my.fulbal_ = [0.0]
-    my.clrbal_ = [0.0]
-    my.catfield_ = [None]
-    my.clrfield_ = [None]
-    my.incfield_ = [None]
-    my.decfield_ = [None]
-    my.catvalues_ = [{}]
-    my.statvalues_ = [{}]
+    My.fulbal_ = [0.0]
+    My.clrbal_ = [0.0]
+    My.catfield_ = [None]
+    My.clrfield_ = [None]
+    My.incfield_ = [None]
+    My.decfield_ = [None]
+    My.catvalues_ = [{}]
+    My.statvalues_ = [{}]
 
-class cli():
+class Cli():
     override_init = False
 
 reset()
 
-def getEnv():
+def get_env():
     return [
-        my.fulbal_,
-        my.clrbal_,
-        my.catfield_,
-        my.clrfield_,
-        my.incfield_,
-        my.decfield_,
-        my.catvalues_,
-        my.statvalues_
+        My.fulbal_,
+        My.clrbal_,
+        My.catfield_,
+        My.clrfield_,
+        My.incfield_,
+        My.decfield_,
+        My.catvalues_,
+        My.statvalues_
     ]
 
 # min-max boundaries for stats
-stats_min = 0.0
-stats_max = 9999999.0
+STATS_MIN = 0.0
+STATS_MAX = 9999999.0
 
 ################################################################################
 # parse plugin-specific directives, but pre-parse for core directives first
 ################################################################################
 
-def parseMyDirective(line):
+def parse_my_directive(line):
     p = Parser()
-    p.preParseDirective(line)
+    p.pre_parse_directive(line)
     if p.done:
         return
-    arg = p.arg
+    #arg = p.arg
     argtrim = p.argtrim
     cmd = p.cmd
     options = p.options
@@ -82,15 +86,15 @@ def parseMyDirective(line):
 
     if cmd == 'init':
         if argtrim:
-            if not cli.override_init:
-                my.fulbal_[-1] = float(argtrim)
-                my.clrbal_[-1] = my.fulbal_[-1]
-                my.statvalues_[-1]['init'] = my.fulbal_[-1]
-                infoMessage('Initializing balance to {0}.'.format(currency(my.fulbal_[-1])))
+            if not Cli.override_init:
+                My.fulbal_[-1] = float(argtrim)
+                My.clrbal_[-1] = My.fulbal_[-1]
+                My.statvalues_[-1]['init'] = My.fulbal_[-1]
+                info_message(f"Initializing balance to {currency(My.fulbal_[-1])}.")
             else:
-                infoMessage('Overriding &init directive.')
+                info_message('Overriding &init directive.')
         else:
-            p.invalidUsage('&init <float>')
+            p.invalid_usage('&init <float>')
 
     ####################
 
@@ -99,18 +103,18 @@ def parseMyDirective(line):
         if argtrim:
             parts = argtrim.split()
             if len(parts) > 1:
-                if (parts[0] == 'catfield'):
-                    my.catfield_[-1] = int(parts[1])
-                    infoMessage('Setting category field to {0}.'.format(str(my.catfield_[-1])))
-                elif (parts[0] == 'clrfield'):
-                    my.clrfield_[-1] = int(parts[1])
-                    infoMessage('Setting clear field to {0}.'.format(str(my.clrfield_[-1])))
-                elif (parts[0] == 'decfield'):
-                    my.decfield_[-1] = int(parts[1])
-                    infoMessage('Setting decrement field to {0}.'.format(str(my.decfield_[-1])))
-                elif (parts[0] == 'incfield'):
-                    my.incfield_[-1] = int(parts[1])
-                    infoMessage('Setting increment field to {0}.'.format(str(my.incfield_[-1])))
+                if parts[0] == 'catfield':
+                    My.catfield_[-1] = int(parts[1])
+                    info_message(f"Setting category field to {str(My.catfield_[-1])}.")
+                elif parts[0] == 'clrfield':
+                    My.clrfield_[-1] = int(parts[1])
+                    info_message(f"Setting clear field to {str(My.clrfield_[-1])}.")
+                elif parts[0] == 'decfield':
+                    My.decfield_[-1] = int(parts[1])
+                    info_message(f"Setting decrement field to {str(My.decfield_[-1])}.")
+                elif parts[0] == 'incfield':
+                    My.incfield_[-1] = int(parts[1])
+                    info_message(f"Setting increment field to {str(My.incfield_[-1])}.")
                 else:
                     show_usage = True
             else:
@@ -118,7 +122,7 @@ def parseMyDirective(line):
         else:
             show_usage = True
         if show_usage:
-            p.invalidUsage('&set [ catfield <int> | clrfield <int> | decfield <int> | incfield <int> ]')
+            p.invalid_usage('&set [ catfield <int> | clrfield <int> | decfield <int> | incfield <int> ]')
 
     ####################
 
@@ -131,90 +135,87 @@ def parseMyDirective(line):
             elif option in ['-i', '--init']:
                 init = True
             else:
-                unrecognizedOption(option)
+                unrecognized_option(option)
         if init:
-            my.catvalues_ = [{}]
-            my.statvalues_ = [{}]
-            infoMessage('Stats initialized.')
+            My.catvalues_ = [{}]
+            My.statvalues_ = [{}]
+            info_message('Stats initialized.')
         elif simple:
             if not argtrim:
-                simpleStats('All')
+                simple_stats('All')
             elif not ' ' in argtrim:
-                simpleStats(argtrim)
+                simple_stats(argtrim)
             else:
-                simpleStatsHeader()
+                simple_stats_header()
                 for category in argtrim.split():
-                    simpleStats(category, True)
-                if core.main.output_[-1]:
-                    printLine()
+                    simple_stats(category, True)
+                if core.Main.output_[-1]:
+                    print_line()
         else:
             if not argtrim:
-                moreStats('All')
+                more_stats('All')
             elif not ' ' in argtrim:
-                moreStats(argtrim)
+                more_stats(argtrim)
             else:
                 for category in argtrim.split():
-                    moreStats(category)
+                    more_stats(category)
 
     ####################
 
     else:
-        p.invalidDirective()
+        p.invalid_directive()
 
 ################################################################################
 # display banking stats in simple and complex formats
 ################################################################################
 
-def simpleStatsHeader():
-    cat_header_width = core.main.width_[-1][my.catfield_[-1]]
-    dec_header = core.main.headers_[-1][my.decfield_[-1]]
-    dec_header_width = core.main.width_[-1][my.decfield_[-1]]
-    inc_header = core.main.headers_[-1][my.incfield_[-1]]
-    inc_header_width = core.main.width_[-1][my.incfield_[-1]]
-    if core.main.output_[-1]:
-        printLine('{0} {1}  {2}'.format(
-            rjustify('', cat_header_width + 2),
-            rjustify(dec_header, dec_header_width + 3),
-            rjustify(inc_header, inc_header_width + 3))
-        )
+def simple_stats_header():
+    cat_header_width = core.Main.width_[-1][My.catfield_[-1]]
+    dec_header = core.Main.headers_[-1][My.decfield_[-1]]
+    dec_header_width = core.Main.width_[-1][My.decfield_[-1]]
+    inc_header = core.Main.headers_[-1][My.incfield_[-1]]
+    inc_header_width = core.Main.width_[-1][My.incfield_[-1]]
+    if core.Main.output_[-1]:
+        cat_header_rj = rjustify('', cat_header_width + 2)
+        dec_header_rj = rjustify(dec_header, dec_header_width + 3)
+        inc_header_rj = rjustify(inc_header, inc_header_width + 3)
+        print_line(f"{cat_header_rj} {dec_header_rj}  {inc_header_rj}")
 
 ####################
 
-def simpleStats(category, use_header = False):
-    if checkCatField():
+def simple_stats(category, use_header = False):
+    if check_cat_field():
         catpay_key = category + 'payamt'
         catdep_key = category + 'depamt'
-        if not catpay_key in my.catvalues_[-1] or not catdep_key in my.catvalues_[-1]:
+        if not catpay_key in My.catvalues_[-1] or not catdep_key in My.catvalues_[-1]:
             catpay_key = 'payamt'
             catdep_key = 'depamt'
-        cat_header_width = core.main.width_[-1][my.catfield_[-1]]
-        dec_header = core.main.headers_[-1][my.decfield_[-1]]
-        dec_header_width = core.main.width_[-1][my.decfield_[-1]]
-        catpay_currency = currency(my.catvalues_[-1][catpay_key])
-        inc_header = core.main.headers_[-1][my.incfield_[-1]]
-        inc_header_width = core.main.width_[-1][my.incfield_[-1]]
-        catdep_currency = currency(my.catvalues_[-1][catdep_key])
+        cat_header_width = core.Main.width_[-1][My.catfield_[-1]]
+        dec_header = core.Main.headers_[-1][My.decfield_[-1]]
+        dec_header_width = core.Main.width_[-1][My.decfield_[-1]]
+        catpay_currency = currency(My.catvalues_[-1][catpay_key])
+        inc_header = core.Main.headers_[-1][My.incfield_[-1]]
+        inc_header_width = core.Main.width_[-1][My.incfield_[-1]]
+        catdep_currency = currency(My.catvalues_[-1][catdep_key])
         if not use_header:
-            if core.main.output_[-1]:
-                printLine('{0} :: {1}: {2}  {3}: {4}'.format(
-                    rjustify(category, cat_header_width),
-                    rjustify(dec_header, dec_header_width),
-                    rjustify(catpay_currency, dec_header_width + 3),
-                    rjustify(inc_header, inc_header_width),
-                    rjustify(catdep_currency, inc_header_width + 3))
-                )
+            if core.Main.output_[-1]:
+                category_rj = rjustify(category, cat_header_width)
+                dec_header_rj = rjustify(dec_header, dec_header_width)
+                catpay_currency_rj = rjustify(catpay_currency, dec_header_width + 3)
+                inc_header_rj = rjustify(inc_header, inc_header_width)
+                catdep_currency_rj = rjustify(catdep_currency, inc_header_width + 3)
+                print_line(f"{category_rj} :: {dec_header_rj}: {catpay_currency_rj}  {inc_header_rj}: {catdep_currency_rj}")
         else:
-            if core.main.output_[-1]:
-                printLine('{0} | {1}  {2}'.format(
-                    rjustify(category, cat_header_width),
-                    rjustify(catpay_currency, dec_header_width + 3),
-                    rjustify(catdep_currency, inc_header_width + 3))
-                )
+            if core.Main.output_[-1]:
+                category_rj = rjustify(category, cat_header_width)
+                catpay_currency_rj = rjustify(catpay_currency, dec_header_width + 3)
+                catdep_currency_rj = rjustify(catdep_currency, inc_header_width + 3)
+                print_line(f"{category_rj} | {catpay_currency_rj}  {catdep_currency_rj}")
 
 ####################
 
-def moreStats(category):
-    if checkCatField():
+def more_stats(category):
+    if check_cat_field():
         min_in_key = category + 'min-in'
         max_in_key = category + 'max-in'
         num_in_key = category + 'num-in'
@@ -224,7 +225,8 @@ def moreStats(category):
         num_out_key = category + 'num-out'
         sum_out_key = category + 'sum-out'
         general = False
-        if not min_in_key in my.statvalues_[-1] or not max_in_key in my.statvalues_[-1] or not num_in_key in my.statvalues_[-1] or not sum_in_key in my.statvalues_[-1] or not min_out_key in my.statvalues_[-1] or not max_out_key in my.statvalues_[-1] or not num_out_key in my.statvalues_[-1] or not sum_out_key in my.statvalues_[-1]:
+        keys = [min_in_key, max_in_key, num_in_key, sum_in_key, min_out_key, max_out_key, num_out_key, sum_out_key]
+        if not all (key in My.statvalues_[-1] for key in keys):
             general = True
             min_in_key = 'min-in'
             max_in_key = 'max-in'
@@ -234,41 +236,45 @@ def moreStats(category):
             max_out_key = 'max-out'
             num_out_key = 'num-out'
             sum_out_key = 'sum-out'
-        start = my.statvalues_[-1]['init']
-        finish = my.fulbal_[-1]
+        start = My.statvalues_[-1]['init']
+        finish = My.fulbal_[-1]
         change = round(100 * (finish - start) / start)
         change_str = 'decrease' if change < 0 else 'increase'
         change_str = 'change' if change == 0 else change_str
-        min_in = my.statvalues_[-1][min_in_key] if my.statvalues_[-1][min_in_key] != stats_max else 0
-        num_in = my.statvalues_[-1][num_in_key]
-        sum_in = my.statvalues_[-1][sum_in_key]
+        min_in = My.statvalues_[-1][min_in_key] if My.statvalues_[-1][min_in_key] != STATS_MAX else 0
+        num_in = My.statvalues_[-1][num_in_key]
+        sum_in = My.statvalues_[-1][sum_in_key]
         avg_in = sum_in / num_in if num_in > 0 else 0
-        max_in = my.statvalues_[-1][max_in_key]
-        header_in = core.main.headers_[-1][my.incfield_[-1]]
-        width_in = core.main.width_[-1][my.incfield_[-1]]
-        min_out = my.statvalues_[-1][min_out_key] if my.statvalues_[-1][min_out_key] != stats_max else 0
-        num_out = my.statvalues_[-1][num_out_key]
-        sum_out = my.statvalues_[-1][sum_out_key]
+        max_in = My.statvalues_[-1][max_in_key]
+        header_in = core.Main.headers_[-1][My.incfield_[-1]]
+        width_in = core.Main.width_[-1][My.incfield_[-1]]
+        min_out = My.statvalues_[-1][min_out_key] if My.statvalues_[-1][min_out_key] != STATS_MAX else 0
+        num_out = My.statvalues_[-1][num_out_key]
+        sum_out = My.statvalues_[-1][sum_out_key]
         avg_out = sum_out / num_out if num_out > 0 else 0
-        max_out = my.statvalues_[-1][max_out_key]
-        header_out = core.main.headers_[-1][my.decfield_[-1]]
-        width_out = core.main.width_[-1][my.decfield_[-1]]
-        if core.main.output_[-1]:
-            printLine(f"{category}:")
-            printLine('{0} {1}, {2} {3}'.format(currency(sum_out), header_out, currency(sum_in), header_in))
+        max_out = My.statvalues_[-1][max_out_key]
+        header_out = core.Main.headers_[-1][My.decfield_[-1]]
+        width_out = core.Main.width_[-1][My.decfield_[-1]]
+        if core.Main.output_[-1]:
+            print_line(f"{category}:")
+            print_line(f"{currency(sum_out)} {header_out}, {currency(sum_in)} {header_in}")
             if general:
-                printLine('{0} start, {1} finish, {2}% {3}'.format(currency(start), currency(finish), abs(change), change_str))
-            printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_out, width_out),
-                rjustify(currency(min_out), width_out), rjustify(currency(avg_out), width_out), rjustify(currency(max_out), width_out))
-            )
-            printLine('{0} min / avg / max = {1} / {2} / {3}'.format(ljustify(header_in, width_in),
-                rjustify(currency(min_in), width_in), rjustify(currency(avg_in), width_in), rjustify(currency(max_in), width_in))
-            )
-            printLine()
+                print_line(f"{currency(start)} start, {currency(finish)} finish, {abs(change)}% {change_str}")
+            header_out_lj = ljustify(header_out, width_out)
+            min_out_rj = rjustify(currency(min_out), width_out)
+            avg_out_rj = rjustify(currency(avg_out), width_out)
+            max_out_rj = rjustify(currency(max_out), width_out)
+            print_line(f"{header_out_lj} min / avg / max = {min_out_rj} / {avg_out_rj} / {max_out_rj}")
+            header_in_lj = ljustify(header_in, width_in)
+            min_in_rj = rjustify(currency(min_in), width_in)
+            avg_in_rj = rjustify(currency(avg_in), width_in)
+            max_in_rj = rjustify(currency(max_in), width_in)
+            print_line(f"{header_in_lj} min / avg / max = {min_in_rj} / {avg_in_rj} / {max_in_rj}")
+            print_line()
 
-def checkCatField():
-    if my.catfield_[-1] == None:
-        errorMessage('Cannot run &stats when catfield is not set.')
+def check_cat_field():
+    if My.catfield_[-1] is None:
+        error_message('Cannot run &stats when catfield is not set.')
         return False
     return True
 
@@ -276,15 +282,15 @@ def checkCatField():
 # add command-line options just for this plugin
 ################################################################################
 
-def parseOption(option, parameter):
+def parse_option(option, parameter):
     # result[0] = known/unknown
     # result[1] = skip next word (option parameter)
     result = [False, False]
-    if parameter == None:
+    if parameter is None:
         parameter = ''
     if option in ['-oi', '--override-init']:
-        parseMyDirective('&init {0}'.format(parameter))
-        cli.override_init = True
+        parse_my_directive(f"&init {parameter}")
+        Cli.override_init = True
         result = [True, True]
     return result
 
@@ -292,130 +298,150 @@ def parseOption(option, parameter):
 # plugin-specific parsing
 ################################################################################
 
-def pluginMain(line):
-    out = preParse(line)
-    if core.main.header_mode_:
-        if core.main.output_[-1] and out != None:
-            printLine(out)
-        core.main.header_mode_ = False
+def plugin_main(line):
+    out = pre_parse(line)
+    if core.Main.header_mode_:
+        if core.Main.output_[-1] and out is not None:
+            print_line(out)
+        core.Main.header_mode_ = False
         return
     payamt = 0.0
     depamt = 0.0
-    if my.decfield_[-1] != None:
-        payamt = core.main.elements_[my.decfield_[-1]]
-        payamt = re.sub('^\d\.-', '', payamt)
+    if My.decfield_[-1] is not None:
+        payamt = core.Main.elements_[My.decfield_[-1]]
+        payamt = re.sub(r'^\d\.-', '', payamt)
         if payamt.strip() == '':
             payamt = 0.0
     else:
-        errorMessage('Decrement field is not set.')
-    if my.incfield_[-1] != None:
-        depamt = core.main.elements_[my.incfield_[-1]]
-        depamt = re.sub('^\d\.-', '', depamt)
+        error_message('Decrement field is not set.')
+    if My.incfield_[-1] is not None:
+        depamt = core.Main.elements_[My.incfield_[-1]]
+        depamt = re.sub(r'^\d\.-', '', depamt)
         if depamt.strip() == '':
             depamt = 0.0
     else:
-        errorMessage('Increment field is not set.')
+        error_message('Increment field is not set.')
     try:
         # calculate running balance
-        my.fulbal_[-1] -= float(payamt)
-        my.fulbal_[-1] += float(depamt)
+        My.fulbal_[-1] -= float(payamt)
+        My.fulbal_[-1] += float(depamt)
 
         # record general category values
-        if not 'payamt' in my.catvalues_[-1]: my.catvalues_[-1]['payamt'] = 0.0
-        my.catvalues_[-1]['payamt'] += float(payamt)
-        if not 'depamt' in my.catvalues_[-1]: my.catvalues_[-1]['depamt'] = 0.0
-        my.catvalues_[-1]['depamt'] += float(depamt)
+        if not 'payamt' in My.catvalues_[-1]:
+            My.catvalues_[-1]['payamt'] = 0.0
+        My.catvalues_[-1]['payamt'] += float(payamt)
+        if not 'depamt' in My.catvalues_[-1]:
+            My.catvalues_[-1]['depamt'] = 0.0
+        My.catvalues_[-1]['depamt'] += float(depamt)
 
         # record general stats values
-        if not 'min-in' in my.statvalues_[-1]: my.statvalues_[-1]['min-in'] = stats_max
-        if float(depamt) < my.statvalues_[-1]['min-in'] and float(payamt) == 0.0:
-            my.statvalues_[-1]['min-in'] = float(depamt)
-        if not 'max-in' in my.statvalues_[-1]: my.statvalues_[-1]['max-in'] = stats_min
-        if float(depamt) > my.statvalues_[-1]['max-in']:
-            my.statvalues_[-1]['max-in'] = float(depamt)
-        if not 'num-in' in my.statvalues_[-1]: my.statvalues_[-1]['num-in'] = 0
-        if not 'sum-in' in my.statvalues_[-1]: my.statvalues_[-1]['sum-in'] = 0
+        if not 'min-in' in My.statvalues_[-1]:
+            My.statvalues_[-1]['min-in'] = STATS_MAX
+        if float(depamt) < My.statvalues_[-1]['min-in'] and float(payamt) == 0.0:
+            My.statvalues_[-1]['min-in'] = float(depamt)
+        if not 'max-in' in My.statvalues_[-1]:
+            My.statvalues_[-1]['max-in'] = STATS_MIN
+        if float(depamt) > My.statvalues_[-1]['max-in']:
+            My.statvalues_[-1]['max-in'] = float(depamt)
+        if not 'num-in' in My.statvalues_[-1]:
+            My.statvalues_[-1]['num-in'] = 0
+        if not 'sum-in' in My.statvalues_[-1]:
+            My.statvalues_[-1]['sum-in'] = 0
         if float(depamt) > 0:
-            my.statvalues_[-1]['num-in'] += 1
-            my.statvalues_[-1]['sum-in'] += float(depamt)
-        if not 'min-out' in my.statvalues_[-1]: my.statvalues_[-1]['min-out'] = stats_max
-        if float(payamt) < my.statvalues_[-1]['min-out'] and float(depamt) == 0.0:
-            my.statvalues_[-1]['min-out'] = float(payamt)
-        if not 'max-out' in my.statvalues_[-1]: my.statvalues_[-1]['max-out'] = stats_min
-        if float(payamt) > my.statvalues_[-1]['max-out']:
-            my.statvalues_[-1]['max-out'] = float(payamt)
-        if not 'num-out' in my.statvalues_[-1]: my.statvalues_[-1]['num-out'] = 0
-        if not 'sum-out' in my.statvalues_[-1]: my.statvalues_[-1]['sum-out'] = 0
+            My.statvalues_[-1]['num-in'] += 1
+            My.statvalues_[-1]['sum-in'] += float(depamt)
+        if not 'min-out' in My.statvalues_[-1]:
+            My.statvalues_[-1]['min-out'] = STATS_MAX
+        if float(payamt) < My.statvalues_[-1]['min-out'] and float(depamt) == 0.0:
+            My.statvalues_[-1]['min-out'] = float(payamt)
+        if not 'max-out' in My.statvalues_[-1]:
+            My.statvalues_[-1]['max-out'] = STATS_MIN
+        if float(payamt) > My.statvalues_[-1]['max-out']:
+            My.statvalues_[-1]['max-out'] = float(payamt)
+        if not 'num-out' in My.statvalues_[-1]:
+            My.statvalues_[-1]['num-out'] = 0
+        if not 'sum-out' in My.statvalues_[-1]:
+            My.statvalues_[-1]['sum-out'] = 0
         if float(payamt) > 0:
-            my.statvalues_[-1]['num-out'] += 1
-            my.statvalues_[-1]['sum-out'] += float(payamt)
+            My.statvalues_[-1]['num-out'] += 1
+            My.statvalues_[-1]['sum-out'] += float(payamt)
 
         # record specific category values
-        if my.clrfield_[-1] != None and core.main.elements_[my.clrfield_[-1]] != ' ':
-            my.clrbal_[-1] -= float(payamt)
-            my.clrbal_[-1] += float(depamt)
-        if my.catfield_[-1] != None and core.main.elements_[my.catfield_[-1]] != ' ':
-            for catkey in core.main.elements_[my.catfield_[-1]].split():
+        if My.clrfield_[-1] is not None and core.Main.elements_[My.clrfield_[-1]] != ' ':
+            My.clrbal_[-1] -= float(payamt)
+            My.clrbal_[-1] += float(depamt)
+        if My.catfield_[-1] is not None and core.Main.elements_[My.catfield_[-1]] != ' ':
+            for catkey in core.Main.elements_[My.catfield_[-1]].split():
                 catpay_key = catkey + 'payamt'
                 catdep_key = catkey + 'depamt'
-                if not catpay_key in my.catvalues_[-1]: my.catvalues_[-1][catpay_key] = 0.0
-                my.catvalues_[-1][catpay_key] += float(payamt)
-                if not catdep_key in my.catvalues_[-1]: my.catvalues_[-1][catdep_key] = 0.0
-                my.catvalues_[-1][catdep_key] += float(depamt)
+                if not catpay_key in My.catvalues_[-1]:
+                    My.catvalues_[-1][catpay_key] = 0.0
+                My.catvalues_[-1][catpay_key] += float(payamt)
+                if not catdep_key in My.catvalues_[-1]:
+                    My.catvalues_[-1][catdep_key] = 0.0
+                My.catvalues_[-1][catdep_key] += float(depamt)
 
         # record specific stats values
-        if my.catfield_[-1] != None and core.main.elements_[my.catfield_[-1]] != ' ':
-            for statkey in core.main.elements_[my.catfield_[-1]].split():
+        if My.catfield_[-1] is not None and core.Main.elements_[My.catfield_[-1]] != ' ':
+            for statkey in core.Main.elements_[My.catfield_[-1]].split():
                 min_in_key = statkey + 'min-in'
                 max_in_key = statkey + 'max-in'
                 num_in_key = statkey + 'num-in'
                 sum_in_key = statkey + 'sum-in'
-                if not min_in_key in my.statvalues_[-1]: my.statvalues_[-1][min_in_key] = 9999999.0
-                if float(depamt) < my.statvalues_[-1][min_in_key] and float(payamt) == 0.0:
-                    my.statvalues_[-1][min_in_key] = float(depamt)
-                if not max_in_key in my.statvalues_[-1]: my.statvalues_[-1][max_in_key] = 0.0
-                if float(depamt) > my.statvalues_[-1][max_in_key]:
-                    my.statvalues_[-1][max_in_key] = float(depamt)
-                if not num_in_key in my.statvalues_[-1]: my.statvalues_[-1][num_in_key] = 0
-                if not sum_in_key in my.statvalues_[-1]: my.statvalues_[-1][sum_in_key] = 0
+                if not min_in_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][min_in_key] = 9999999.0
+                if float(depamt) < My.statvalues_[-1][min_in_key] and float(payamt) == 0.0:
+                    My.statvalues_[-1][min_in_key] = float(depamt)
+                if not max_in_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][max_in_key] = 0.0
+                if float(depamt) > My.statvalues_[-1][max_in_key]:
+                    My.statvalues_[-1][max_in_key] = float(depamt)
+                if not num_in_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][num_in_key] = 0
+                if not sum_in_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][sum_in_key] = 0
                 if float(depamt) > 0:
-                    my.statvalues_[-1][num_in_key] += 1
-                    my.statvalues_[-1][sum_in_key] += float(depamt)
+                    My.statvalues_[-1][num_in_key] += 1
+                    My.statvalues_[-1][sum_in_key] += float(depamt)
                 min_out_key = statkey + 'min-out'
                 max_out_key = statkey + 'max-out'
                 num_out_key = statkey + 'num-out'
                 sum_out_key = statkey + 'sum-out'
-                if not min_out_key in my.statvalues_[-1]: my.statvalues_[-1][min_out_key] = 9999999.0
-                if float(payamt) < my.statvalues_[-1][min_out_key] and float(depamt) == 0.0:
-                    my.statvalues_[-1][min_out_key] = float(payamt)
-                if not max_out_key in my.statvalues_[-1]: my.statvalues_[-1][max_out_key] = 0.0
-                if float(payamt) > my.statvalues_[-1][max_out_key]:
-                    my.statvalues_[-1][max_out_key] = float(payamt)
-                if not num_out_key in my.statvalues_[-1]: my.statvalues_[-1][num_out_key] = 0
-                if not sum_out_key in my.statvalues_[-1]: my.statvalues_[-1][sum_out_key] = 0
+                if not min_out_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][min_out_key] = 9999999.0
+                if float(payamt) < My.statvalues_[-1][min_out_key] and float(depamt) == 0.0:
+                    My.statvalues_[-1][min_out_key] = float(payamt)
+                if not max_out_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][max_out_key] = 0.0
+                if float(payamt) > My.statvalues_[-1][max_out_key]:
+                    My.statvalues_[-1][max_out_key] = float(payamt)
+                if not num_out_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][num_out_key] = 0
+                if not sum_out_key in My.statvalues_[-1]:
+                    My.statvalues_[-1][sum_out_key] = 0
                 if float(payamt) > 0:
-                    my.statvalues_[-1][num_out_key] += 1
-                    my.statvalues_[-1][sum_out_key] += float(payamt)
+                    My.statvalues_[-1][num_out_key] += 1
+                    My.statvalues_[-1][sum_out_key] += float(payamt)
 
     except ValueError:
         pass
 
-    if core.main.output_[-1]:
-        fulbal = '{:8.2f}'.format(my.fulbal_[-1])
-        clrbal = '{:8.2f}'.format(my.clrbal_[-1])
-        if len(core.main.formats_[-1]) == len(core.main.elements_) + 2:
-            fulbal_index = len(core.main.elements_)
-            clrbal_index = len(core.main.elements_) + 1
-            fulbal = formatElementByValue(fulbal_index, my.fulbal_[-1])
-            clrbal = formatElementByValue(clrbal_index, my.clrbal_[-1])
-        printLine(f"{out}{fulbal}{clrbal}")
+    if core.Main.output_[-1]:
+        fulbal = f"{My.fulbal_[-1]:8.2f}"
+        clrbal = f"{My.clrbal_[-1]:8.2f}"
+        if len(core.Main.formats_[-1]) == len(core.Main.elements_) + 2:
+            fulbal_index = len(core.Main.elements_)
+            clrbal_index = len(core.Main.elements_) + 1
+            fulbal = format_element_by_value(fulbal_index, My.fulbal_[-1])
+            clrbal = format_element_by_value(clrbal_index, My.clrbal_[-1])
+        print_line(f"{out}{fulbal}{clrbal}")
 
 ####################
 # start here
 ####################
 
-def parseLine(line):
-    if isDirective(line):
-        parseMyDirective(line)
+def parse_line(line):
+    if is_directive(line):
+        parse_my_directive(line)
     else:
-        pluginMain(line)
+        plugin_main(line)

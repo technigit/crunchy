@@ -8,6 +8,9 @@
 #
 # Core variables that can be accessed by other modules
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
 import shutil
@@ -19,7 +22,7 @@ import testing_functions
 # all primary environment values and functions are accessed here
 ################################################################################
 
-class main():
+class Main():
     formats_ = []
     headers_ = []
     justify_ = []
@@ -53,7 +56,7 @@ class main():
     terminal_width_ = shutil.get_terminal_size().columns
     version_ = None
 
-class testing():
+class Testing():
     testing_ = []
     test_filename_ = []
     test_f_ = []
@@ -62,12 +65,12 @@ class testing():
     test_pass_ = []
     test_fail_ = []
     reset = testing_functions.reset
-    testMessage = testing_functions.testMessage
-    testStop = testing_functions.testStop
-    testVersions = testing_functions.testVersions
+    testMessage = testing_functions.test_message
+    testStop = testing_functions.test_stop
+    testVersions = testing_functions.test_versions
     debug = testing_functions.debug
 
-class cli():
+class Cli():
     ignore_stop_ = None
     ignore_stop_reset_ = None
     verbose_verbose_ = None
@@ -76,49 +79,51 @@ class cli():
     test_force_verbose_ = None
 
 def reset(full_reset = True):
-    main.formats_ = setListValue(main.formats_, None)
-    main.headers_ = setListValue(main.headers_, None)
-    main.justify_ = setListValue(main.justify_, None)
-    main.padding_ = setListValue(main.padding_, None)
-    main.line_parse_delimiter_ = '\s\s\s*'
-    main.line_element_placeholder_ = '-'
-    main.map_ = setListValue(main.map_, None)
-    main.using_headers_ = True
-    main.width_ = setListValue(main.width_, None)
+    Main.formats_ = set_list_value(Main.formats_, None)
+    Main.headers_ = set_list_value(Main.headers_, None)
+    Main.justify_ = set_list_value(Main.justify_, None)
+    Main.padding_ = set_list_value(Main.padding_, None)
+    Main.line_parse_delimiter_ = r'\s\s\s*'
+    Main.line_element_placeholder_ = '-'
+    Main.map_ = set_list_value(Main.map_, None)
+    Main.using_headers_ = True
+    Main.width_ = set_list_value(Main.width_, None)
 
     if full_reset:
-        main.comment_mode_ = setListValue(main.comment_mode_, 0)
-        main.elements_ = None
-        main.goto_ = setListValue(main.goto_, None)
-        main.infomsg_ = setListValue(main.infomsg_, True)
-        main.output_ = setListValue(main.output_, True)
-        main.read_inline_ = False
-        main.read_path_ = setListValue(main.read_path_, None)
-        main.running_ = setListValue(main.running_, True)
-        main.timer_ = setListValue(main.timer_, False)
-        main.timer_label_ = setListValue(main.timer_label_, None)
-        main.timer_ts_ = setListValue(main.timer_ts_, None)
+        Main.comment_mode_ = set_list_value(Main.comment_mode_, 0)
+        Main.elements_ = None
+        Main.goto_ = set_list_value(Main.goto_, None)
+        Main.infomsg_ = set_list_value(Main.infomsg_, True)
+        Main.output_ = set_list_value(Main.output_, True)
+        Main.read_inline_ = False
+        Main.read_path_ = set_list_value(Main.read_path_, None)
+        Main.running_ = set_list_value(Main.running_, True)
+        Main.timer_ = set_list_value(Main.timer_, False)
+        Main.timer_label_ = set_list_value(Main.timer_label_, None)
+        Main.timer_ts_ = set_list_value(Main.timer_ts_, None)
 
-        cli.ignore_stop_ = False
-        cli.ignore_stop_reset_ = False
-        cli.skip_testing_ = False
-        cli.test_force_quiet_ = False
-        cli.test_force_verbose_ = False
+        Cli.ignore_stop_ = False
+        Cli.ignore_stop_reset_ = False
+        Cli.skip_testing_ = False
+        Cli.test_force_quiet_ = False
+        Cli.test_force_verbose_ = False
 
 # only update current sandbox environment values
-def setListValue(list, value):
-    if list == []:
-        list = [value]
+def set_list_value(env_list, value):
+    if env_list == []:
+        env_list = [value]
     else:
-        list[-1] = value
-    return list
+        env_list[-1] = value
+    return env_list
 
 ################################################################################
 # class methods to set text colors
 ################################################################################
 
 class ANSI():
-    def set_display_attribute(code): return "\33[{attr}m".format(attr = code)
+    @staticmethod
+    def set_display_attribute(code):
+        return f"\33[{code}m"
     FG_DEFAULT = set_display_attribute(0)
     FG_RED = set_display_attribute(31)
     FG_YELLOW = set_display_attribute(33)

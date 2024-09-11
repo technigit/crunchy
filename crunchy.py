@@ -8,56 +8,64 @@
 #
 # Main processing module
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
-import fileinput, re, traceback
+import fileinput
+import re
+import traceback
 
 import core
-core.main.version_ = 'v0.0.28'
-
-from core_functions import checkInteractivity, showInfo, parseOptions, skipLine, errorMessage
+from core_functions import check_interactivity, show_info, parse_options, skip_line, error_message
 
 # abstraction layer for plugins
 import bridge
+
+core.Main.version_ = 'v0.0.29'
 
 ################################################################################
 # send data to the plugin for processing
 ################################################################################
 
-def processData(filenames):
+def process_data(cli_filenames):
     should_stop = True
     try:
-        if core.main.interactive_:
-            line = input(core.main.interactive_prompt_)
-            if not skipLine(line): bridge.plugin.parseLine(line)
+        if core.Main.interactive_:
+            line = input(core.Main.interactive_prompt_)
+            if not skip_line(line):
+                bridge.Plugin.parseLine(line)
             should_stop = False
         else:
-            with fileinput.FileInput(files=(filenames), mode='r') as lines:
+            with fileinput.FileInput(files=(cli_filenames), mode='r') as lines:
                 for line in lines:
                     line = re.sub('\n', '', line)
-                    if not skipLine(line): bridge.plugin.parseLine(line)
-                    if not core.main.running_[-1]: break
+                    if not skip_line(line):
+                        bridge.Plugin.parseLine(line)
+                    if not core.Main.running_[-1]:
+                        break
     except EOFError:
         print()
         should_stop = True
     except FileNotFoundError as e:
-        errorMessage('Input file not found: {0}'.format(e.filename))
+        error_message(f"Input file not found: {e.filename}")
     except IndexError:
-        errorMessage('Badly formed data: {0}'.format(line))
+        error_message(f"Badly formed data: {line}")
         should_stop = False
     except ValueError:
-        errorMessage('Invalid input: {0}'.format(line))
+        error_message(f"Invalid input: {line}")
         should_stop = False
     except KeyboardInterrupt:
-        errorMessage('Interrupted.')
+        error_message('Interrupted.')
     except:
-        errorMessage('Unexpected error.')
+        error_message('Unexpected error.')
         traceback.print_exc()
     finally:
-        if core.testing.testing_[-1]:
-            core.testing.testStop()
+        if core.Testing.testing_[-1]:
+            core.Testing.testStop()
     if should_stop:
-        core.main.running_[-1] = False
+        core.Main.running_[-1] = False
 
 ####################
 # start here
@@ -65,22 +73,22 @@ def processData(filenames):
 
 # initialize all environments
 core.reset()
-core.testing.reset()
-bridge.usePlugin('shell')
+core.Testing.reset()
+bridge.use_plugin('shell')
 
 # process command-line options
-filenames = parseOptions()
+filenames = parse_options()
 
 # show information when starting in interactive mode
-core.main.interactive_ = checkInteractivity(filenames)
-showInfo()
+core.Main.interactive_ = check_interactivity(filenames)
+show_info()
 
 # main parsing loop
-while core.main.running_[-1]:
-    processData(filenames)
-    if not core.main.interactive_:
+while core.Main.running_[-1]:
+    process_data(filenames)
+    if not core.Main.interactive_:
         break
 
 # gracefully handle uncompleted goto directives
-if core.main.goto_[-1]:
-    errorMessage("EOF reached before tag '{0}'.".format(core.main.goto_[-1]))
+if core.Main.goto_[-1]:
+    error_message(f"EOF reached before tag '{core.Main.goto_[-1]}")

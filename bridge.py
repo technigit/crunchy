@@ -8,34 +8,38 @@
 #
 # Bridge connection to plugins
 #
+# Copyright (c) 2000, 2022, 2023, 2024 Andy Warmack
+# This file is part of Crunchy Report Generator, licensed under the MIT License.
+# See the LICENSE file in the project root for more information.
 ################################################################################
 
-import importlib, traceback
+import importlib
+import traceback
 
 def placeholder(_none = None, none_ = None):
-    print('placeholder')
+    return 'placeholder'
 
-class plugin():
+class Plugin():
     getEnv = placeholder
     identify = placeholder
     parseLine = placeholder
-    parseOption = placeholder
+    parse_option = placeholder
     reset = placeholder
     my = placeholder
 
-def usePlugin(plugin_name):
+def use_plugin(plugin_name):
     try:
-        p = importlib.import_module('plugins.{0}'.format(plugin_name))
-        plugin.getEnv = p.getEnv
-        plugin.identify = p.identify
-        plugin.parseLine = p.parseLine
-        plugin.parseOption = p.parseOption
-        plugin.reset = p.reset
-        plugin.my = p.my
-        plugin.reset()
-    except AttributeError:
-        raise AttributeError
-    except ModuleNotFoundError:
-        raise ModuleNotFoundError
+        p = importlib.import_module(f"plugins.{plugin_name}")
+        Plugin.getEnv = p.get_env
+        Plugin.identify = p.identify
+        Plugin.parseLine = p.parse_line
+        Plugin.parseOption = p.parse_option
+        Plugin.reset = p.reset
+        Plugin.my = p.My
+        Plugin.reset()
+    except AttributeError as e:
+        raise AttributeError from e
+    except ModuleNotFoundError as e:
+        raise ModuleNotFoundError from e
     except:
         traceback.print_exc()
