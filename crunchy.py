@@ -18,12 +18,13 @@ import re
 import traceback
 
 import core
-from core_functions import check_interactivity, show_info, parse_options, skip_line, error_message
+from core_directives import parse_options
+from core_functions import check_interactivity, show_info, skip_line, error_message
 
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.29'
+core.Main.version_ = 'v0.0.30'
 
 ################################################################################
 # send data to the plugin for processing
@@ -58,7 +59,7 @@ def process_data(cli_filenames):
         should_stop = False
     except KeyboardInterrupt:
         error_message('Interrupted.')
-    except:
+    except: # pylint: disable=bare-except
         error_message('Unexpected error.')
         traceback.print_exc()
     finally:

@@ -16,13 +16,13 @@
 import re
 
 import core
+from core_directives import is_directive
 from core_functions import ljustify, rjustify, currency
 from core_functions import pre_parse
-from core_functions import Parser, unrecognized_option
 from core_functions import format_element_by_value
-from core_functions import is_directive
 from core_functions import print_line
 from core_functions import info_message, error_message
+from core_options import unrecognized_option
 
 def identify():
     return 'banking'
@@ -73,11 +73,10 @@ STATS_MAX = 9999999.0
 ################################################################################
 
 def parse_my_directive(line):
-    p = Parser()
+    p = core.Main.parser()
     p.pre_parse_directive(line)
     if p.done:
         return
-    #arg = p.arg
     argtrim = p.argtrim
     cmd = p.cmd
     options = p.options

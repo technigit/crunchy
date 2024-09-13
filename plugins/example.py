@@ -14,9 +14,8 @@
 ################################################################################
 
 import core
+from core_directives import is_directive
 from core_functions import pre_parse, map_elements
-from core_functions import Parser
-from core_functions import is_directive
 from core_functions import print_line
 from core_functions import info_message
 
@@ -46,14 +45,12 @@ def get_env():
 ################################################################################
 
 def parse_my_directive(line):
-    p = Parser()
+    p = core.Main.parser()
     p.pre_parse_directive(line)
     if p.done:
         return
-    #arg = p.arg
     argtrim = p.argtrim
     cmd = p.cmd
-    #options = p.options
 
     ####################
 

@@ -16,6 +16,7 @@
 import shutil
 from pathlib import Path
 
+from core_directives import Parser
 import testing_functions
 
 ################################################################################
@@ -34,7 +35,7 @@ class Main():
     width_ = []
 
     comment_mode_ = []
-    elements_ = None
+    elements_ = []
     goto_ = []
     infomsg_ = []
     output_ = []
@@ -54,7 +55,9 @@ class Main():
     max_read_depth_ = 5
     source_path_ =  str(Path(__file__).resolve().parent)
     terminal_width_ = shutil.get_terminal_size().columns
-    version_ = None
+    version_ = ''
+
+    parser = Parser
 
 class Testing():
     testing_ = []

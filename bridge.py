@@ -16,8 +16,8 @@
 import importlib
 import traceback
 
-def placeholder(_none = None, none_ = None):
-    return 'placeholder'
+def placeholder(place = '', holder = ''):
+    return f"{place}{holder}"
 
 class Plugin():
     getEnv = placeholder
@@ -41,5 +41,5 @@ def use_plugin(plugin_name):
         raise AttributeError from e
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError from e
-    except:
+    except: # pylint: disable=bare-except
         traceback.print_exc()

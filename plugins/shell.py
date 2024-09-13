@@ -13,7 +13,8 @@
 # See the LICENSE file in the project root for more information.
 ################################################################################
 
-from core_functions import Parser, is_directive, info_message
+from core_directives import Parser, is_directive
+from core_functions import info_message
 
 def identify():
     return 'shell'
@@ -22,20 +23,13 @@ class My():
     pass # placeholder
 def get_env():
     pass # placeholder
-def parse_option(option, parameter):
-    return [False, False] # placeholder
+def parse_option(place = False, holder = False):
+    return [place, holder]
 def reset():
     pass # placeholder
 
-def parse_my_directive(line):
-    p = Parser()
-    p.parse_directive(line)
-
-def plugin_main(line):
-    info_message(f"{identify()}: This plugin does not process data.")
-
 def parse_line(line):
     if is_directive(line):
-        parse_my_directive(line)
+        Parser().parse_directive(line)
     else:
-        plugin_main(line)
+        info_message(f"{identify()}: This plugin does not process data.")
