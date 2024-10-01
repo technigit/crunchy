@@ -162,10 +162,63 @@ def timer_elapsed(start, stop):
     return f"{stop - start:.5f}s"
 
 ################################################################################
+# user-definable variables
+################################################################################
+
+def type_by_value(var_value):
+    try:
+        return int(var_value)
+    except ValueError:
+        pass
+
+    try:
+        return float(var_value)
+    except ValueError:
+        pass
+
+    return var_value.strip("'").strip('"')
+
+def get_var(var_key):
+    return core.Main.variables_[-1][var_key]
+
+def set_var(var_key, var_values):
+    core.Main.variables_[-1][var_key] = [type_by_value(value) for value in var_values]
+
+def check_var(var_key):
+    return bool(var_key in core.Main.variables_[-1])
+
+def push_var(var_key, var_values):
+    core.Main.variables_[-1][var_key] = [type_by_value(value) for value in core.Main.variables_[-1][var_key] + var_values]
+
+def pop_var(var_key):
+    core.Main.variables_[-1][var_key] = core.Main.variables_[-1][var_key][:-1]
+
+def dup_var(var_key, new_var_keys):
+    for new_var_key in new_var_keys:
+        set_var(new_var_key, core.Main.variables_[-1][var_key].copy())
+
+def show_var(var_key):
+    if check_var(var_key):
+        info_message(f"{var_key}: {get_var(var_key)}")
+    else:
+        info_message(f"{var_key}: deleted or not found")
+
+def show_all_vars():
+    for var_key in core.Main.variables_[-1]:
+        show_var(var_key)
+
+def del_var(var_keys):
+    for var_key in var_keys:
+        core.Main.variables_[-1].pop(var_key, None)
+
+def all_vars():
+    return core.Main.variables_[-1].items()
+
+################################################################################
 # process data
 #
-#    - Data elements are delimited by two spaces.
-#    - A dash denotes an empty data element.
+#    - Data elements delimited by at least two spaces (line_parse_delimiter_).
+#    - A dash denotes an empty data element (line_element_placeholder_).
 ################################################################################
 
 def get_elements(line):
@@ -258,9 +311,6 @@ def pre_parse(line):
     # if we still don't have a header at this point, then the data is misconfigured
     if core.Main.headers_[-1] is None:
         error_message(f"Invalid header configuration: {line}")
-        if not core.Main.interactive_:
-            core.Main.running_[-1] = False
-            pop_env()
         return
 
     # return the header or data elements, after mapping
@@ -403,7 +453,8 @@ def push_env():
         core.Main.map_,
         core.Main.timer_,
         core.Main.timer_label_,
-        core.Main.timer_ts_
+        core.Main.timer_ts_,
+        core.Main.variables_
     ])
     push_lists([
         core.Testing.testing_,
@@ -414,7 +465,7 @@ def push_env():
         core.Testing.test_pass_,
         core.Testing.test_fail_
     ])
-    push_lists(bridge.Plugin.getEnv())
+    push_lists(bridge.Plugin.get_env())
 
 def pop_env():
     pop_lists([
@@ -430,7 +481,11 @@ def pop_env():
         core.Main.justify_,
         core.Main.padding_,
         core.Main.width_,
-        core.Main.map_
+        core.Main.map_,
+        core.Main.timer_,
+        core.Main.timer_label_,
+        core.Main.timer_ts_,
+        core.Main.variables_
     ])
     pop_lists([
         core.Testing.testing_,
@@ -441,24 +496,30 @@ def pop_env():
         core.Testing.test_pass_,
         core.Testing.test_fail_
     ])
-    pop_lists(bridge.Plugin.getEnv())
+    pop_lists(bridge.Plugin.get_env())
 
 def push_lists(lists):
     if lists is not None:
         for pushlist in lists:
             if pushlist is not None:
-                pushlist.append(pushlist[-1])
+                newlist = pushlist[-1]
+                if isinstance(newlist, dict):
+                    newdict = newlist.copy()
+                    pushlist.append(newdict)
+                else:
+                    pushlist.append(pushlist[-1])
 
 def pop_lists(lists):
     if lists is not None:
         for poplist in lists:
-            if poplist is not None and len(poplist) > 1:
-                if not core.Main.read_inline_:
-                    poplist.pop()
-                else:
-                    copy = poplist[-1]
-                    poplist.pop()
-                    poplist[-1] = copy
+            if poplist is not None:
+                if len(poplist) > 1:
+                    if not core.Main.read_inline_:
+                        poplist.pop()
+                    else:
+                        copy = poplist[-1]
+                        poplist.pop()
+                        poplist[-1] = copy
 
 ################################################################################
 # messaging

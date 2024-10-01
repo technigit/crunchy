@@ -115,6 +115,11 @@ def test_versions(ranges):
                     last = int(dashes[1])
                     if int(version[j]) >= first and int(version[j]) <= last:
                         num_matching = num_matching + 1
+                elif '+' in segment:
+                    dashes = segment.split('+')
+                    first = int(dashes[0])
+                    if int(version[j]) >= first:
+                        num_matching = num_matching + 1
 
             # it matches!
             if num_matching == num_segments:

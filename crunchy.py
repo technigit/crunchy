@@ -17,6 +17,9 @@ import fileinput
 import re
 import traceback
 
+# for interactive up/down arrow history
+import readline # pylint: disable=unused-import
+
 import core
 from core_directives import parse_options
 from core_functions import check_interactivity, show_info, skip_line, error_message
@@ -24,7 +27,7 @@ from core_functions import check_interactivity, show_info, skip_line, error_mess
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.30'
+core.Main.version_ = 'v0.0.31'
 
 ################################################################################
 # send data to the plugin for processing
@@ -36,14 +39,14 @@ def process_data(cli_filenames):
         if core.Main.interactive_:
             line = input(core.Main.interactive_prompt_)
             if not skip_line(line):
-                bridge.Plugin.parseLine(line)
+                bridge.Plugin.parse_line(line)
             should_stop = False
         else:
             with fileinput.FileInput(files=(cli_filenames), mode='r') as lines:
                 for line in lines:
                     line = re.sub('\n', '', line)
                     if not skip_line(line):
-                        bridge.Plugin.parseLine(line)
+                        bridge.Plugin.parse_line(line)
                     if not core.Main.running_[-1]:
                         break
     except EOFError:

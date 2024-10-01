@@ -20,9 +20,9 @@ def placeholder(place = '', holder = ''):
     return f"{place}{holder}"
 
 class Plugin():
-    getEnv = placeholder
+    get_env = placeholder
     identify = placeholder
-    parseLine = placeholder
+    parse_line = placeholder
     parse_option = placeholder
     reset = placeholder
     my = placeholder
@@ -30,10 +30,10 @@ class Plugin():
 def use_plugin(plugin_name):
     try:
         p = importlib.import_module(f"plugins.{plugin_name}")
-        Plugin.getEnv = p.get_env
+        Plugin.get_env = p.get_env
         Plugin.identify = p.identify
-        Plugin.parseLine = p.parse_line
-        Plugin.parseOption = p.parse_option
+        Plugin.parse_line = p.parse_line
+        Plugin.parse_option = p.parse_option
         Plugin.reset = p.reset
         Plugin.my = p.My
         Plugin.reset()
@@ -41,5 +41,7 @@ def use_plugin(plugin_name):
         raise AttributeError from e
     except ModuleNotFoundError as e:
         raise ModuleNotFoundError from e
+    except ImportError:
+        pass
     except: # pylint: disable=bare-except
         traceback.print_exc()

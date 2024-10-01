@@ -28,8 +28,8 @@ class Main():
     headers_ = []
     justify_ = []
     padding_ = []
-    line_parse_delimiter_ = None
     line_element_placeholder_ = None
+    line_parse_delimiter_ = None
     map_ = []
     using_headers_ = None
     width_ = []
@@ -45,6 +45,7 @@ class Main():
     timer_ = []
     timer_label_ = []
     timer_ts_ = []
+    variables_ = [{}]
 
     currency_format_ = '${:,.2f}'
     percentage_format_ = '{:.2f}%'
@@ -86,8 +87,8 @@ def reset(full_reset = True):
     Main.headers_ = set_list_value(Main.headers_, None)
     Main.justify_ = set_list_value(Main.justify_, None)
     Main.padding_ = set_list_value(Main.padding_, None)
-    Main.line_parse_delimiter_ = r'\s\s\s*'
     Main.line_element_placeholder_ = '-'
+    Main.line_parse_delimiter_ = r'\s\s\s*'
     Main.map_ = set_list_value(Main.map_, None)
     Main.using_headers_ = True
     Main.width_ = set_list_value(Main.width_, None)
@@ -104,6 +105,7 @@ def reset(full_reset = True):
         Main.timer_ = set_list_value(Main.timer_, False)
         Main.timer_label_ = set_list_value(Main.timer_label_, None)
         Main.timer_ts_ = set_list_value(Main.timer_ts_, None)
+        Main.variables_ = [{}]
 
         Cli.ignore_stop_ = False
         Cli.ignore_stop_reset_ = False

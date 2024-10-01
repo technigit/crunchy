@@ -23,6 +23,7 @@ import bridge
 from core_options import parse_options, unrecognized_option, no_options_recognized
 from core_functions import show_info
 from core_functions import timer_start, timer_stop, timer_status
+from core_functions import set_var, check_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
 from core_functions import get_elements, make_headers
 from core_functions import use_plugin
 from core_functions import print_line, skip_line
@@ -30,7 +31,7 @@ from core_functions import show_help
 from core_functions import push_env, pop_env
 from core_functions import info_message, error_message
 
-###############################################################################
+################################################################################
 # parse primary directives
 ################################################################################
 
@@ -50,7 +51,7 @@ def process_data_from_directive(filenames):
             for line in f_input:
                 line = re.sub('\n', '', line)
                 if not skip_line(line):
-                    bridge.Plugin.parseLine(line)
+                    bridge.Plugin.parse_line(line)
     except FileNotFoundError as e:
         error_message(f"cli: Input file not found: {e.filename}")
     except IndexError:
@@ -192,7 +193,7 @@ class Parser:
                     else:
                         unrecognized_option(option)
                 if print_header:
-                    bridge.Plugin.parseLine('  '.join(core.Main.headers_[-1]))
+                    bridge.Plugin.parse_line('  '.join(core.Main.headers_[-1]))
             else:
                 error_message('No header information found.')
 
@@ -297,7 +298,7 @@ class Parser:
                             for read_line in read_lines:
                                 read_line = re.sub('\n', '', read_line)
                                 if not skip_line(read_line):
-                                    bridge.Plugin.parseLine(read_line)
+                                    bridge.Plugin.parse_line(read_line)
                                 if not core.Main.running_[-1]:
                                     break
                     except FileNotFoundError as e:
@@ -410,13 +411,48 @@ class Parser:
 
         ####################
 
+        elif cmd == 'var':
+            if argtrim is not None:
+                parts = argtrim.split()
+                var_key = parts[0]
+                known_var_key = check_var(var_key)
+                var_values = parts[1:]
+                has_var_values = len(var_values) >= 1
+                should_set_var = True
+                should_show_var_only = True
+                for option in options:
+                    if option in ['-A', '--append'] and known_var_key and has_var_values:
+                        push_var(var_key, var_values)
+                        should_set_var = False
+                    elif option in ['-D', '--duplicate'] and known_var_key:
+                        dup_var(var_key, var_values)
+                        should_set_var = False
+                        should_show_var_only = False
+                    elif option in ['-p', '--pop'] and known_var_key:
+                        pop_var(var_key)
+                    elif option in ['-x', '--delete']:
+                        del_var([var_key] + var_values)
+                        should_set_var = False
+                        should_show_var_only = False
+                if should_set_var and has_var_values:
+                    set_var(var_key, var_values)
+                if should_show_var_only:
+                    show_var(var_key)
+                else:
+                    for key in [var_key] + var_values:
+                        show_var(key)
+            else:
+                show_all_vars()
+
+        ####################
+
         elif cmd == 'test' and core.Cli.skip_testing_:
             no_options_recognized(options)
         elif cmd == 'test':
             no_options_recognized(options)
             if argtrim is None:
                 core.Testing.testMessage(f"Usage: &{cmd} <parameters>")
-            elif argtrim.startswith('start'):
+            elif argtrim.startswith('start '):
                 if not core.Testing.testing_[-1]:
                     m = re.search(r'^start\s+(\S*)$', argtrim)
                     if m:
@@ -446,7 +482,7 @@ class Parser:
                 if not core.Cli.test_force_quiet_:
                     core.Testing.test_verbose_[-1] = True
                     core.Testing.testMessage('Test mode set to verbose.')
-            elif argtrim.startswith('versions'):
+            elif argtrim.startswith('versions '):
                 m = re.search(r'^versions\s+(.*)$', argtrim)
                 if m:
                     version_range = m.group(1)
@@ -460,7 +496,17 @@ class Parser:
             elif argtrim == 'stop':
                 core.Testing.testStop()
             else:
-                core.Testing.testMessage(f"{cmd}: invalid parameter.")
+                core.Testing.testMessage(f"{cmd}: invalid parameter(s) '{argtrim}'")
+
+
+        ####################
+
+        elif cmd == 'env':
+            no_options_recognized(options)
+            if argtrim == 'push':
+                push_env()
+            elif argtrim == 'pop':
+                pop_env()
 
         ####################
 
