@@ -115,3 +115,19 @@ Help Topic: Directives
 
          &help plugins
 
+   &var <variable> <value-1> [<value-2> ...]
+
+   &var <variable-1>[,<variable-2>,...] <value-1>[,<value-2>,...]
+
+   &var <variable-1>[,<variable-2>,...] --until <end-marker>
+   <value-1>[,<value-1>,...]
+   <value-2>[,<value-2>,...]
+   ...
+   <end-marker>
+
+      Create or reassign variables and assign values to them.
+
+      See also:
+
+         &help variables
+

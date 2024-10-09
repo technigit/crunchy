@@ -45,6 +45,8 @@ class Main():
     timer_ = []
     timer_label_ = []
     timer_ts_ = []
+    until_ = None
+    until_var_key_ = None
     variables_ = [{}]
 
     currency_format_ = '${:,.2f}'
@@ -105,6 +107,8 @@ def reset(full_reset = True):
         Main.timer_ = set_list_value(Main.timer_, False)
         Main.timer_label_ = set_list_value(Main.timer_label_, None)
         Main.timer_ts_ = set_list_value(Main.timer_ts_, None)
+        Main.until_ = None
+        Main.until_var_key_ = None
         Main.variables_ = [{}]
 
         Cli.ignore_stop_ = False

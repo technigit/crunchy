@@ -13,9 +13,13 @@ Help Topic: &read
 
       -i | --inline
 
-         Do not read the file in an isolated sandbox context.  The current/updated environment values are retained when &read          completes or is terminated.
+         Do not read the file in an isolated sandbox context.  The current/updated environment values are retained when &read completes or is terminated.
+
+      -q | --quiet
+
+         Suppress informational messages about reading the file.
 
       -s | --sandbox
 
-         Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read    completes or is terminated.
+         Default.  Read the file in an isolated sandbox context.  The environment values revert to their original values when &read completes or is terminated.
 

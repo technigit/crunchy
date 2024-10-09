@@ -1,6 +1,8 @@
 --
 Help Topic: Data Format
 
+   NOTE:  While most of this data format information is central to the Crunchy Report Generator, it mainly applies to the banking plugin.  Other plugins may expect/support different formats.
+
    The first non-directive line specifies the header, and subsequent non-directive lines feed the data.  Directives add more information about how the data is to be crunched.  For readability, the delimiter is two spaces between fields, and a field cannot contain two consecutive spaces.
 
    Minimal example:

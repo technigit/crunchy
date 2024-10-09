@@ -1,0 +1,61 @@
+--
+Help Topic: Variables
+
+   User-defined variables can be used to store data for later usage.  They can contain numbers, strings, lists, and even dictionaries in the Python sense.  These variables can enhance the data input file by supporting graphs, numerical computations, data manipulation, and so on.  When multiple variables are specified, the same number of values are also specified.
+
+   Usage:
+
+      &var <variable> <value-1>[ <value-2> ...]
+
+      &var <variable> <value-1>[, <value-2>, ...]
+
+      &var <variable-1>[,<variable-2>,...] <value-1>[,<value-2>,...]
+
+      &var <variable-1>[,<variable-2>,...] --until <end-marker>
+      <value-1>[ <value-1> ...]
+      <value-2>[, <value-2>, ...]
+      ...
+      <end-marker>
+
+   Options:
+
+      -A | --append
+
+         Add values to an array/list variable.  Note that this will work with any variable, regardless of value type.
+
+      -D | --duplicate
+
+         Create one or more copies of a variable.
+
+      -p | --pop
+
+         Remove the last value of an array/list variable(s).
+
+      -x | --delete
+
+         Delete the variable(s).
+
+   Examples:
+
+      # single variable and integer value
+      &var num 5
+
+      # single variable and float value
+      &var pi 3.14
+
+      # single variable and string value
+      &var label 'Total'
+
+      # single variable and a list of values in an array
+      &var daily_high_temps 87 89 90 92 94 96 90
+
+      # three variables, each assigned an array of integers
+      &var product1,product2,product3 23,55,18 32,12,41 15,27,42
+
+      # three variables, each assigned an array of integers (same result as above)
+      &var widget1,widget2,widget3 --until end
+      23 32 15
+      55 12 27
+      18 41 42
+      end:
+

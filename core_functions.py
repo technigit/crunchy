@@ -14,6 +14,8 @@
 ################################################################################
 
 import re
+import readline
+import shutil
 import sys
 import textwrap
 import time
@@ -22,6 +24,7 @@ from os.path import dirname, exists, realpath
 
 import core
 import bridge
+from var_functions import process_until, show_var
 
 ################################################################################
 # show utility information in interactive mode
@@ -160,59 +163,6 @@ def timer_status():
 
 def timer_elapsed(start, stop):
     return f"{stop - start:.5f}s"
-
-################################################################################
-# user-definable variables
-################################################################################
-
-def type_by_value(var_value):
-    try:
-        return int(var_value)
-    except ValueError:
-        pass
-
-    try:
-        return float(var_value)
-    except ValueError:
-        pass
-
-    return var_value.strip("'").strip('"')
-
-def get_var(var_key):
-    return core.Main.variables_[-1][var_key]
-
-def set_var(var_key, var_values):
-    core.Main.variables_[-1][var_key] = [type_by_value(value) for value in var_values]
-
-def check_var(var_key):
-    return bool(var_key in core.Main.variables_[-1])
-
-def push_var(var_key, var_values):
-    core.Main.variables_[-1][var_key] = [type_by_value(value) for value in core.Main.variables_[-1][var_key] + var_values]
-
-def pop_var(var_key):
-    core.Main.variables_[-1][var_key] = core.Main.variables_[-1][var_key][:-1]
-
-def dup_var(var_key, new_var_keys):
-    for new_var_key in new_var_keys:
-        set_var(new_var_key, core.Main.variables_[-1][var_key].copy())
-
-def show_var(var_key):
-    if check_var(var_key):
-        info_message(f"{var_key}: {get_var(var_key)}")
-    else:
-        info_message(f"{var_key}: deleted or not found")
-
-def show_all_vars():
-    for var_key in core.Main.variables_[-1]:
-        show_var(var_key)
-
-def del_var(var_keys):
-    for var_key in var_keys:
-        core.Main.variables_[-1].pop(var_key, None)
-
-def all_vars():
-    return core.Main.variables_[-1].items()
 
 ################################################################################
 # process data
@@ -402,10 +352,48 @@ def skip_line(line):
     if m:
         if m.group(1) == core.Main.goto_[-1]:
             core.Main.goto_[-1] = None
+        elif m.group(1) == core.Main.until_:
+            core.Main.until_ = None
+            keys = core.Main.until_var_key_.split(',')
+            for key in keys:
+                info_message(show_var(key))
         return True
     if core.Main.goto_[-1]:
         return True
+    if core.Main.until_:
+        process_until(line)
+        return True
     return False
+
+################################################################################
+# text pager
+################################################################################
+
+def page_text(text):
+    up_down_arrow_history = []
+    for i in range(readline.get_current_history_length()):
+        up_down_arrow_history.append(readline.get_history_item(i + 1))
+    terminal_width = shutil.get_terminal_size().columns
+    terminal_height = shutil.get_terminal_size().lines
+    prompt_height = 2
+    word_wrap_offset = 5
+    page_index = -1
+    for line in text:
+        if page_index < terminal_height - prompt_height:
+            line_length = len(line)
+            while line_length >= 0:
+                line_length -= terminal_width - word_wrap_offset
+                page_index += 1
+        else:
+            command = input('Help (Press Enter to continue or q to quit): ')
+            print('\033[F' + ' ' * terminal_width + '\r', end='')
+            if command.lower() == 'q':
+                break
+            page_index = 0
+        print(textwrap.fill(line, terminal_width))
+    readline.clear_history()
+    for item in up_down_arrow_history:
+        readline.add_history(item)
 
 ################################################################################
 # process help files
@@ -421,8 +409,12 @@ def show_help(topic, stop_running = False):
         if exists(help_path + '/_main.txt'):
             help_path += '/_main'
         helpfile = open(help_path + '.txt', encoding='utf-8')
-        for line in helpfile:
-            print(textwrap.fill(line, core.Main.terminal_width_))
+        if core.Main.interactive_:
+            page_text(helpfile)
+        else:
+            terminal_width = shutil.get_terminal_size().columns
+            for line in helpfile:
+                print(textwrap.fill(line, terminal_width))
     except FileNotFoundError:
         error_message(f"No help file for '{topic}' could be found.", True)
     finally:
@@ -527,7 +519,10 @@ def pop_lists(lists):
 
 def info_message(message):
     if core.Main.infomsg_[-1] and core.Main.output_[-1]:
-        print_line('<i> ' + message)
+        if isinstance(message, str):
+            message = [message]
+        for msg in message:
+            print_line('<i> ' + msg)
 
 def error_message(message, trace = False):
     print_line(core.ANSI.FG_RED + '<E> ' + message + core.ANSI.FG_DEFAULT, sys.stderr)

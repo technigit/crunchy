@@ -23,13 +23,13 @@ import bridge
 from core_options import parse_options, unrecognized_option, no_options_recognized
 from core_functions import show_info
 from core_functions import timer_start, timer_stop, timer_status
-from core_functions import set_var, check_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
 from core_functions import get_elements, make_headers
 from core_functions import use_plugin
 from core_functions import print_line, skip_line
 from core_functions import show_help
 from core_functions import push_env, pop_env
 from core_functions import info_message, error_message
+from var_functions import set_var, check_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
 
 ################################################################################
 # parse primary directives
@@ -275,11 +275,14 @@ class Parser:
 
         elif cmd == 'read':
             if argtrim:
+                quiet_mode = False
                 for option in options:
                     if option in ['-i', '--inline']:
                         core.Main.read_inline_ = True
                     elif option in ['-s', '--sandbox']:
                         core.Main.read_inline_ = False
+                    elif option in ['-q', '--quiet']:
+                        quiet_mode = True
                     else:
                         unrecognized_option(option)
                 read_source = argtrim
@@ -291,7 +294,8 @@ class Parser:
                         read_sources[i] = core.Main.read_path_[-1] + '/' + rs
                 if core.Main.max_read_depth_ > 0:
                     core.Main.max_read_depth_ = core.Main.max_read_depth_ - 1
-                    info_message(f"Reading file{s}: {read_source}{inline}")
+                    if not quiet_mode:
+                        info_message(f"Reading file{s}: {read_source}{inline}")
                     push_env()
                     try:
                         with fileinput.FileInput(files=(read_sources), mode='r') as read_lines:
@@ -314,7 +318,8 @@ class Parser:
                         if core.Testing.testing_[-1]:
                             core.Testing.testStop()
                         pop_env()
-                        info_message(f"Finished reading file{s}: {read_source}{inline}")
+                        if not quiet_mode:
+                            info_message(f"Finished reading file{s}: {read_source}{inline}")
                     core.Main.max_read_depth_ = core.Main.max_read_depth_ + 1
                 else:
                     error_message(f"{cmd}: Nested level too deep; will not read {read_source}.")
@@ -413,6 +418,10 @@ class Parser:
 
         elif cmd == 'var':
             if argtrim is not None:
+                m = re.search(r'^(.*)\s(-+.*)$', argtrim)
+                if m is not None:
+                    options += m.group(2).split()
+                    argtrim = m.group(1)
                 parts = argtrim.split()
                 var_key = parts[0]
                 known_var_key = check_var(var_key)
@@ -420,29 +429,45 @@ class Parser:
                 has_var_values = len(var_values) >= 1
                 should_set_var = True
                 should_show_var_only = True
-                for option in options:
+                should_defer_show = False
+                append = False
+                skip = False
+                for i, option in enumerate(options):
+                    if skip:
+                        skip = False
+                        continue
                     if option in ['-A', '--append'] and known_var_key and has_var_values:
                         push_var(var_key, var_values)
                         should_set_var = False
+                    elif option in ['-A', '--append'] and not has_var_values:
+                        append = True
                     elif option in ['-D', '--duplicate'] and known_var_key:
                         dup_var(var_key, var_values)
                         should_set_var = False
                         should_show_var_only = False
                     elif option in ['-p', '--pop'] and known_var_key:
                         pop_var(var_key)
+                    elif option in ['--until']:
+                        if not append:
+                            del_var([var_key])
+                        should_set_var = False
+                        should_defer_show = True
+                        skip = True
+                        core.Main.until_ = options[i+1]
+                        core.Main.until_var_key_ = var_key
                     elif option in ['-x', '--delete']:
                         del_var([var_key] + var_values)
                         should_set_var = False
                         should_show_var_only = False
                 if should_set_var and has_var_values:
                     set_var(var_key, var_values)
-                if should_show_var_only:
-                    show_var(var_key)
-                else:
+                if should_show_var_only and not should_defer_show:
+                    info_message(show_var(var_key))
+                elif not should_defer_show:
                     for key in [var_key] + var_values:
-                        show_var(key)
+                        info_message(show_var(key))
             else:
-                show_all_vars()
+                info_message(show_all_vars())
 
         ####################
 
