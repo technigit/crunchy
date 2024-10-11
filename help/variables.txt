@@ -37,25 +37,62 @@ Help Topic: Variables
 
    Examples:
 
-      # single variable and integer value
-      &var num 5
+      > # single variable and integer value
+      > &var num 5
+      <i> num: [5]
+      
+      > # single variable and float value
+      > &var pi 3.14
+      <i> pi: [3.14]
 
-      # single variable and float value
-      &var pi 3.14
+      > # single variable and string value
+      > &var label 'Total'
+      <i> label: ['Total']
 
-      # single variable and string value
-      &var label 'Total'
+      > # single variable and a list of values in an array
+      > &var daily_high_temps 87 89 90 92 94 96 90
+      <i> daily_high_temps: [87, 89, 90, 92, 94, 96, 90]
 
-      # single variable and a list of values in an array
-      &var daily_high_temps 87 89 90 92 94 96 90
+      > # three variables, each assigned an array of integers
+      > &var widget1,widget2,widget3 23,55,18,17,22 32,12,41,15,16 15,27,42,42,12
+      <i> widget1: [23, 55, 18, 17, 22]
+      <i> widget2: [32, 12, 41, 15, 16]
+      <i> widget3: [15, 27, 42, 42, 12]
 
-      # three variables, each assigned an array of integers
-      &var product1,product2,product3 23,55,18 32,12,41 15,27,42
+      > # three variables, each assigned an array of integers (same result as above)
+      > &var widget1,widget2,widget3 --until end
+      > 23 32 15
+      > 55 12 27
+      > 18 41 42
+      > 17 15 42
+      > 22 16 12
+      > end:
+      <i> widget1: [23, 55, 18, 17, 22]
+      <i> widget2: [32, 12, 41, 15, 16]
+      <i> widget3: [15, 27, 42, 42, 12]
 
-      # three variables, each assigned an array of integers (same result as above)
-      &var widget1,widget2,widget3 --until end
-      23 32 15
-      55 12 27
-      18 41 42
-      end:
+      > # pop values
+      > &var -p widget1
+      <i> widget1: [23, 55, 18, 17]
+      > &var -p widget1,widget2,widget3
+      <i> widget1: [23, 55, 18]
+      <i> widget2: [32, 12, 41, 15]
+      <i> widget3: [15, 27, 42, 42]
+
+      > # duplicate variables
+      > &var -D widget1,widget2,widget3 w1 w2 w3
+      <i> widget1: [23, 55, 18]
+      <i> widget2: [32, 12, 41, 15]
+      <i> widget3: [15, 27, 42, 42]
+      <i> w1: [23, 55, 18]
+      <i> w2: [32, 12, 41, 15]
+      <i> w3: [15, 27, 42, 42]
+
+      > # delete variables
+      > &var -x num
+      <i> num: deleted or not found
+      > &var -x widget1,widget2,widget3
+      <i> widget1: deleted or not found
+      <i> widget2: deleted or not found
+      <i> widget3: deleted or not found
 

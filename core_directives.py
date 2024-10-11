@@ -29,7 +29,7 @@ from core_functions import print_line, skip_line
 from core_functions import show_help
 from core_functions import push_env, pop_env
 from core_functions import info_message, error_message
-from var_functions import set_var, check_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
+from var_functions import set_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
 
 ################################################################################
 # parse primary directives
@@ -376,6 +376,7 @@ class Parser:
             no_options_recognized(options)
             if argtrim is not None:
                 label = ''
+                mode = None
                 for element in argtrim.split():
                     if element in ['start', 'stop']:
                         mode = element
@@ -424,7 +425,6 @@ class Parser:
                     argtrim = m.group(1)
                 parts = argtrim.split()
                 var_key = parts[0]
-                known_var_key = check_var(var_key)
                 var_values = parts[1:]
                 has_var_values = len(var_values) >= 1
                 should_set_var = True
@@ -436,16 +436,16 @@ class Parser:
                     if skip:
                         skip = False
                         continue
-                    if option in ['-A', '--append'] and known_var_key and has_var_values:
+                    if option in ['-A', '--append'] and has_var_values:
                         push_var(var_key, var_values)
                         should_set_var = False
                     elif option in ['-A', '--append'] and not has_var_values:
                         append = True
-                    elif option in ['-D', '--duplicate'] and known_var_key:
+                    elif option in ['-D', '--duplicate']:
                         dup_var(var_key, var_values)
                         should_set_var = False
                         should_show_var_only = False
-                    elif option in ['-p', '--pop'] and known_var_key:
+                    elif option in ['-p', '--pop']:
                         pop_var(var_key)
                     elif option in ['--until']:
                         if not append:

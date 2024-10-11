@@ -27,7 +27,7 @@ from core_functions import check_interactivity, show_info, skip_line, error_mess
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.32'
+core.Main.version_ = 'v0.0.33'
 
 ################################################################################
 # send data to the plugin for processing
@@ -60,6 +60,8 @@ def process_data(cli_filenames):
     except ValueError:
         error_message(f"Invalid input: {line}")
         should_stop = False
+        if core.Cli.verbose_verbose_:
+            traceback.print_exc()
     except KeyboardInterrupt:
         error_message('Interrupted.')
     except: # pylint: disable=bare-except
