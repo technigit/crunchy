@@ -27,7 +27,7 @@ from core_functions import check_interactivity, show_info, skip_line, error_mess
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.33'
+core.Main.version_ = 'v0.0.34'
 
 ################################################################################
 # send data to the plugin for processing

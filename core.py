@@ -51,6 +51,7 @@ class Main():
 
     currency_format_ = '${:,.2f}'
     percentage_format_ = '{:.2f}%'
+    datetime_format_ = '%Y-%m-%d'
     header_mode_ = None
     interactive_ = False
     interactive_prompt_ = '> '

@@ -14,9 +14,14 @@
 ################################################################################
 
 import re
+from datetime import datetime
 from dateutil import parser
 
 import core
+
+# non-printable null characters for internal parsing
+SPACE_DELIM = '\x00'
+COMMA_DELIM = '\x01'
 
 ################################################################################
 # user-definable variables
@@ -37,13 +42,22 @@ def process_until(line):
             push_or_set_var(key, [value])
             i += 1
 
+def get_values(line):
+    pattern = r'(["\'])(.*?)\1'
+    result = re.sub(pattern, lambda m: m.group(1) + m.group(2).replace(' ', SPACE_DELIM).replace(',', COMMA_DELIM) + m.group(1), line)
+    return result.split()
+
 def type_by_value(var_value):
-    if str(var_value).startswith('date:'):
+    if isinstance(var_value, str):
+        var_value = var_value.strip("'").strip('"').replace(SPACE_DELIM, ' ').replace(COMMA_DELIM, ',')
+    if str(var_value).startswith('date:') or str(var_value).startswith('@'):
         try:
-            datestr = var_value.replace('date:', '')
+            datestr = var_value.replace('date:', '').replace('@', '')
             return parser.parse(datestr)
         except ValueError:
             pass
+    if isinstance(var_value, datetime):
+        return var_value.strftime(core.Main.datetime_format_)
 
     try:
         int_value = int(var_value)
@@ -59,7 +73,7 @@ def type_by_value(var_value):
     except ValueError:
         pass
 
-    return var_value.strip("'").strip('"')
+    return var_value
 
 def get_var(var_key):
     return core.Main.variables_[-1][var_key]

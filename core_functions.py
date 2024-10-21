@@ -21,6 +21,7 @@ import textwrap
 import time
 import traceback
 from os.path import dirname, exists, realpath
+from dateutil import parser
 
 import core
 import bridge
@@ -57,8 +58,13 @@ def format_element(index, elements):
 
 def format_element_by_value(index, element):
     padding = ' '
+    formats = core.Main.formats_[-1][index]
+    if isinstance(element, str) and '@' in formats:
+        try:
+            element = parser.parse(element).strftime(core.Main.datetime_format_)
+        except ValueError:
+            pass
     if is_float(element) and not is_integer(element):
-        formats = core.Main.formats_[-1][index]
         if not core.Main.header_mode_:
             padding = core.Main.padding_[-1][index]
         if formats is not None:
@@ -73,10 +79,11 @@ def format_element_by_value(index, element):
     align = core.Main.justify_[-1][index]
     if align == '<':
         return ljustify(str(element), core.Main.width_[-1][index], padding) + core.Main.margin_
-    if align == '|' or align == '^':
+    if align in ['|', '^']:
         return cjustify(str(element), core.Main.width_[-1][index], padding) + core.Main.margin_
     if align == '>':
         return rjustify(str(element), core.Main.width_[-1][index], padding) + core.Main.margin_
+    return element
 
 def ljustify(content, width, padding = ' '):
     return content.ljust(width, padding)[:width]
@@ -178,15 +185,15 @@ def get_elements(line):
     # convert the delimiter into delim and split the line into elements
     # this approach allows multi-character delimiters
     line = re.sub(core.Main.line_parse_delimiter_, delim, line.lstrip())
-    core.Main.elements_ = line.split(delim)
+    elements = line.split(delim)
 
     # dashes are placeholders for empty fields
-    for i, element in enumerate(core.Main.elements_):
+    for i, element in enumerate(elements):
         if element == core.Main.line_element_placeholder_:
-            core.Main.elements_[i] = ' '
+            elements[i] = ' '
 
     # now we have the elements to send back
-    return core.Main.elements_
+    return elements
 
 ################################################################################
 # generate header data according to specifications
@@ -206,7 +213,7 @@ def make_headers():
         element = element.strip()
 
         # parse the header element specification
-        m = re.search(r'^(#?)([~$%]*)(.*[a-zA-Z])([<|^>]?)(\d+)(\D?)$', element)
+        m = re.search(r'^(#?)([~$%@]*)(.*[a-zA-Z])([<|^>]?)(\d+)(\D?)$', element)
 
         # valid format
         if m is not None:

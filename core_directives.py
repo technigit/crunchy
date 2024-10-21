@@ -29,7 +29,7 @@ from core_functions import print_line, skip_line
 from core_functions import show_help
 from core_functions import push_env, pop_env
 from core_functions import info_message, error_message
-from var_functions import set_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
+from var_functions import get_values, set_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var
 
 ################################################################################
 # parse primary directives
@@ -407,13 +407,14 @@ class Parser:
                 Parser().parse_directive('&identify')
                 plugins = glob.glob(core.Main.source_path_ + '/plugins/*.py')
                 plugins.sort()
-                out = ''
+                other_plugins = ''
+                current_plugin = bridge.Plugin.identify()
                 for plugin in plugins:
                     m = re.search(r'^.*\/([\S\s]*).py', plugin)
                     name = m.group(1)
-                    if name != bridge.Plugin.identify():
-                        out += name + '  '
-                info_message(f"Also available:  {out.strip()}")
+                    if name != current_plugin:
+                        other_plugins += name + '  '
+                info_message(f"Also available:  {other_plugins.strip()}")
 
         ####################
 
@@ -425,7 +426,10 @@ class Parser:
                     argtrim = m.group(1)
                 parts = argtrim.split()
                 var_key = parts[0]
-                var_values = parts[1:]
+                var_values = []
+                m = re.search(r'^[^\s]+\s+(.*)$', argtrim)
+                if m is not None:
+                    var_values = get_values(m.group(1))
                 has_var_values = len(var_values) >= 1
                 should_set_var = True
                 should_show_var_only = True
