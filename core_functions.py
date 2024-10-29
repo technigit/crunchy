@@ -25,7 +25,7 @@ from dateutil import parser
 
 import core
 import bridge
-from var_functions import process_until, show_var
+from var_functions import process_until, push_or_set_var, show_var
 
 ################################################################################
 # show utility information in interactive mode
@@ -255,6 +255,11 @@ def make_headers():
 def pre_parse(line):
     # break the line down into its constituent parts
     core.Main.elements_ = get_elements(line)
+
+    # &var.capture
+    if core.Main.capture_mode_:
+        push_or_set_var(core.Main.capture_key_, [core.Main.elements_])
+        return None
 
     # current plugin not using headers: done, no mapping needed
     if not core.Main.using_headers_:

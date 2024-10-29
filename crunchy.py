@@ -23,23 +23,25 @@ import readline # pylint: disable=unused-import
 import core
 from core_directives import parse_options
 from core_functions import check_interactivity, show_info, skip_line, error_message
+from var_functions import process_release
 
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.34'
+core.Main.version_ = 'v0.0.35'
 
 ################################################################################
 # send data to the plugin for processing
 ################################################################################
 
-def process_data(cli_filenames):
+def process_data(cli_filenames): # pylint: disable=too-many-branches
     should_stop = True
     try:
         if core.Main.interactive_:
             line = input(core.Main.interactive_prompt_)
             if not skip_line(line):
                 bridge.Plugin.parse_line(line)
+            process_release()
             should_stop = False
         else:
             with fileinput.FileInput(files=(cli_filenames), mode='r') as lines:
@@ -47,6 +49,7 @@ def process_data(cli_filenames):
                     line = re.sub('\n', '', line)
                     if not skip_line(line):
                         bridge.Plugin.parse_line(line)
+                    process_release()
                     if not core.Main.running_[-1]:
                         break
     except EOFError:
@@ -57,6 +60,8 @@ def process_data(cli_filenames):
     except IndexError:
         error_message(f"Badly formed data: {line}")
         should_stop = False
+        if core.Cli.verbose_verbose_:
+            traceback.print_exc()
     except ValueError:
         error_message(f"Invalid input: {line}")
         should_stop = False

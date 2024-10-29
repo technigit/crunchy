@@ -299,6 +299,9 @@ def parse_option(option, parameter):
 
 def plugin_main(line):
     out = pre_parse(line)
+    if out is None:
+        return
+
     if core.Main.header_mode_:
         if core.Main.output_[-1] and out is not None:
             print_line(out)

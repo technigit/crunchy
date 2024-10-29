@@ -16,7 +16,9 @@
 import shutil
 from pathlib import Path
 
-from core_directives import Parser
+import core_directives
+import core_functions
+import core_options
 import testing_functions
 
 ################################################################################
@@ -33,6 +35,10 @@ class Main():
     map_ = []
     using_headers_ = None
     width_ = []
+
+    capture_mode_ = None
+    capture_key_ = None
+    release_key_ = None
 
     comment_mode_ = []
     elements_ = []
@@ -61,7 +67,13 @@ class Main():
     terminal_width_ = shutil.get_terminal_size().columns
     version_ = ''
 
-    parser = Parser
+    class Messaging:
+        info_message = core_functions.info_message
+        error_message = core_functions.error_message
+
+    msg = Messaging
+    parser = core_directives.Parser
+    parser.no_options_recognized = core_options.no_options_recognized
 
 class Testing():
     testing_ = []
