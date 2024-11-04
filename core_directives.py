@@ -20,23 +20,8 @@ import traceback
 
 import core
 import bridge
-from core_options import parse_options, unrecognized_option, no_options_recognized
-from core_functions import show_info
-from core_functions import timer_start, timer_stop, timer_status
-from core_functions import get_elements, make_headers
-from core_functions import use_plugin
-from core_functions import print_line, skip_line
-from core_functions import show_help
-from core_functions import push_env, pop_env
-from core_functions import info_message, error_message
-from var_functions import get_values, set_var, push_var, pop_var, dup_var, show_var, show_all_vars, del_var, var_action, process_release
-
-################################################################################
-# parse primary directives
-################################################################################
-
-def is_directive(line):
-    return re.search(r'^\s*&', line)
+import core_functions
+import var_functions
 
 ################################################################################
 # send data to the plugin for processing (from the &cli directive)
@@ -50,18 +35,18 @@ def process_data_from_directive(filenames):
             f.close()
             for line in f_input:
                 line = re.sub('\n', '', line)
-                if not skip_line(line):
+                if not core_functions.skip_line(line):
                     bridge.Plugin.parse_line(line)
     except FileNotFoundError as e:
-        error_message(f"cli: Input file not found: {e.filename}")
+        core.Main.msg.error_message(f"cli: Input file not found: {e.filename}")
     except IndexError:
-        error_message(f"cli: Badly formed data: {line}")
+        core.Main.msg.error_message(f"cli: Badly formed data: {line}")
     except ValueError:
-        error_message(f"cli: Invalid input: {line}")
+        core.Main.msg.error_message(f"cli: Invalid input: {line}")
     except KeyboardInterrupt:
-        error_message('Interrupted.')
+        core.Main.msg.error_message('Interrupted.')
     except: # pylint: disable=bare-except
-        error_message('Unexpected error.')
+        core.Main.msg.error_message('Unexpected error.')
         traceback.print_exc()
     finally:
         fileinput.close()
@@ -70,7 +55,7 @@ def process_data_from_directive(filenames):
 # core class to handle parsing
 ################################################################################
 
-class Parser:
+class DirectiveParser:
     # parser class to be set up as an object that can be used by plugins
 
     def __init__(self):
@@ -82,6 +67,13 @@ class Parser:
         self.m = None
         self.options = None
         self.usage = None
+
+    ########################################
+
+    def is_directive(self, line):
+        # check whether the input line is calling a directive
+
+        return re.search(r'^\s*&', line)
 
     ########################################
 
@@ -122,7 +114,7 @@ class Parser:
     def invalid_directive(self):
         # error message for unrecognized directives
 
-        error_message(f"Invalid directive: {self.line}")
+        core.Main.msg.error_message(f"Invalid directive: {self.line}")
 
     ########################################
 
@@ -131,10 +123,10 @@ class Parser:
 
         if self.usage is not None:
             general = 'General ' if self.usage is not None and plugin_usage is not None else ''
-            error_message(f"{general}Usage: {self.usage}")
+            core.Main.msg.error_message(f"{general}Usage: {self.usage}")
         if plugin_usage is not None:
             plugin = 'Plugin ' if self.usage is not None and plugin_usage is not None else ''
-            error_message(f"{plugin}Usage: {plugin_usage}")
+            core.Main.msg.error_message(f"{plugin}Usage: {plugin_usage}")
 
     ########################################
 
@@ -142,7 +134,7 @@ class Parser:
         # handle unrecognized action for directives
 
         if action is not None:
-            error_message(f"Unrecognized {cmd + ' ' if cmd is not None else ''}action: {action}")
+            core.Main.msg.error_message(f"Unrecognized {cmd + ' ' if cmd is not None else ''}action: {action}")
 
     def no_actions_recognized(self, cmd, action):
         # handle unrecognized action for directives that have no actions
@@ -190,12 +182,12 @@ class Parser:
 
         if cmd == 'cd':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             core.Main.read_path_[-1] = argtrim
             if core.Main.read_path_[-1]:
-                info_message(f"Setting current working directory to '{core.Main.read_path_[-1]}'.")
+                core.Main.msg.info_message(f"Setting current working directory to '{core.Main.read_path_[-1]}'.")
             else:
-                info_message('Resetting current working directory.')
+                core.Main.msg.info_message('Resetting current working directory.')
 
         ####################
 
@@ -203,22 +195,22 @@ class Parser:
             self.no_actions_recognized(cmd, action)
             if argtrim is None:
                 # mimic command line result without any parameters
-                show_info(True)
+                core_functions.show_info(True)
             else:
                 # insert placeholder
                 cli_argv = '. ' + argtrim
                 # run the options as if from the command line
-                filenames = parse_options(cli_argv.split())
+                filenames = core.Main.parser.parse_options(cli_argv.split())
                 process_data_from_directive(filenames)
 
         ####################
 
         elif cmd == 'goto':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             core.Main.goto_[-1] = argtrim
             if argtrim:
-                info_message(f"Skipping to '{core.Main.goto_[-1]}'.")
+                core.Main.msg.info_message(f"Skipping to '{core.Main.goto_[-1]}'.")
             else:
                 self.invalid_usage('&goto <label>')
 
@@ -227,8 +219,8 @@ class Parser:
         elif cmd == 'header':
             self.no_actions_recognized(cmd, action)
             if argtrim:
-                core.Main.elements_ = get_elements(argtrim)
-                core.Main.headers_[-1] = make_headers()
+                core.Main.elements_ = core_functions.get_elements(argtrim)
+                core.Main.headers_[-1] = core_functions.make_headers()
             if core.Main.headers_[-1]:
                 core.Main.header_mode_ = True
                 print_header = True
@@ -236,39 +228,39 @@ class Parser:
                     if option in ['-q', '--quiet']:
                         print_header = False
                     else:
-                        unrecognized_option(option)
+                        core.Main.parser.unrecognized_option(option)
                 if print_header:
                     bridge.Plugin.parse_line('  '.join(core.Main.headers_[-1]))
             else:
-                error_message('No header information found.')
+                core.Main.msg.error_message('No header information found.')
 
         ####################
 
         elif cmd == 'help':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
-            show_help(argtrim)
+            core.Main.parser.no_options_recognized(options)
+            core_functions.show_help(argtrim)
 
         ####################
 
         elif cmd == 'identify':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
-            info_message(f"Loaded plugin: {bridge.Plugin.identify()}")
+            core.Main.parser.no_options_recognized(options)
+            core.Main.msg.info_message(f"Loaded plugin: {bridge.Plugin.identify()}")
 
         ####################
 
         elif cmd == 'map':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             show_usage = False
             if argtrim:
-                premap = get_elements(argtrim)
+                premap = core_functions.get_elements(argtrim)
                 core.Main.map_[-1] = [None] * len(premap)
                 try:
                     for m, element in enumerate(premap):
                         core.Main.map_[-1][int(premap[m]) - 1] = m + 1
-                    info_message('Fields were remapped.')
+                    core.Main.msg.info_message('Fields were remapped.')
                 except ValueError:
                     show_usage = True
             else:
@@ -280,17 +272,17 @@ class Parser:
 
         elif cmd == 'output' and arg == 'on':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             core.Main.output_[-1] = True
-            info_message('Output mode is on.')
+            core.Main.msg.info_message('Output mode is on.')
         elif cmd == 'output' and arg == 'off':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
-            info_message('Output mode is off.')
+            core.Main.parser.no_options_recognized(options)
+            core.Main.msg.info_message('Output mode is off.')
             core.Main.output_[-1] = False
         elif cmd == 'output':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             self.invalid_usage('&output on|off')
 
         ####################
@@ -309,16 +301,16 @@ class Parser:
             for option in options:
                 if option in ['-f', '--force']:
                     # force print
-                    print_line(arg)
+                    core_functions.print_line(arg)
                     self.done = True
                 else:
-                    unrecognized_option(option)
+                    core.Main.parser.unrecognized_option(option)
             if not self.done:
                 if core.Main.output_[-1]:
                     if arg is not None:
-                        print_line(arg)
+                        core_functions.print_line(arg)
                     else:
-                        print_line()
+                        core_functions.print_line()
                 else:
                     pass
             self.done = True
@@ -337,7 +329,7 @@ class Parser:
                     elif option in ['-q', '--quiet']:
                         quiet_mode = True
                     else:
-                        unrecognized_option(option)
+                        core.Main.parser.unrecognized_option(option)
                 read_source = argtrim
                 read_sources = read_source.split(' ')
                 s = 's' if len(read_sources) > 1 else ''
@@ -348,35 +340,35 @@ class Parser:
                 if core.Main.max_read_depth_ > 0:
                     core.Main.max_read_depth_ = core.Main.max_read_depth_ - 1
                     if not quiet_mode:
-                        info_message(f"Reading file{s}: {read_source}{inline}")
-                    push_env()
+                        core.Main.msg.info_message(f"Reading file{s}: {read_source}{inline}")
+                    core_functions.push_env()
                     try:
                         with fileinput.FileInput(files=(read_sources), mode='r') as read_lines:
                             for read_line in read_lines:
                                 read_line = re.sub('\n', '', read_line)
-                                if not skip_line(read_line):
+                                if not core_functions.skip_line(read_line):
                                     bridge.Plugin.parse_line(read_line)
-                                process_release()
+                                var_functions.process_release()
                                 if not core.Main.running_[-1]:
                                     break
                     except FileNotFoundError as e:
-                        error_message(f"{cmd}: Input file not found: {e.filename}")
+                        core.Main.msg.error_message(f"{cmd}: Input file not found: {e.filename}")
                     except IndexError:
-                        error_message(f"{cmd}: Badly formed data: {read_line}", True)
+                        core.Main.msg.error_message(f"{cmd}: Badly formed data: {read_line}", True)
                     except ValueError:
-                        error_message(f"{cmd}: Invalid input: {read_line}", True)
+                        core.Main.msg.error_message(f"{cmd}: Invalid input: {read_line}", True)
                     except: # pylint: disable=bare-except
-                        error_message(f"{cmd}: Unexpected error.", True)
+                        core.Main.msg.error_message(f"{cmd}: Unexpected error.", True)
                         traceback.print_exc()
                     finally:
                         if core.Testing.testing_[-1]:
                             core.Testing.testStop()
-                        pop_env()
+                        core_functions.pop_env()
                         if not quiet_mode:
-                            info_message(f"Finished reading file{s}: {read_source}{inline}")
+                            core.Main.msg.info_message(f"Finished reading file{s}: {read_source}{inline}")
                     core.Main.max_read_depth_ = core.Main.max_read_depth_ + 1
                 else:
-                    error_message(f"{cmd}: Nested level too deep; will not read {read_source}.")
+                    core.Main.msg.error_message(f"{cmd}: Nested level too deep; will not read {read_source}.")
             else:
                 self.invalid_usage('&read <filenames>')
 
@@ -384,7 +376,7 @@ class Parser:
 
         elif cmd == 'set':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             show_usage = False
             if argtrim:
                 parts = argtrim.split()
@@ -409,7 +401,7 @@ class Parser:
 
         elif cmd == 'stop':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
 
             # --ignore-stop: continue reading data and ignore the &stop directive
             # otherwise, stop testing and stop running
@@ -430,7 +422,7 @@ class Parser:
 
         elif cmd == 'timer':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             if argtrim is not None:
                 label = ''
                 mode = None
@@ -440,11 +432,11 @@ class Parser:
                     else:
                         label = element
                 if mode == 'start':
-                    timer_start(label)
+                    core_functions.timer_start(label)
                 elif mode == 'stop':
-                    timer_stop()
+                    core_functions.timer_stop()
             else:
-                timer_status()
+                core_functions.timer_status()
 
         ####################
 
@@ -456,13 +448,13 @@ class Parser:
                     if option in ['-q']:
                         quiet = True
                     else:
-                        unrecognized_option(option)
+                        core.Main.parser.unrecognized_option(option)
                 core.reset(False)
-                use_plugin(argtrim)
+                core_functions.use_plugin(argtrim)
                 if not quiet:
-                    Parser().parse_directive('&identify')
+                    DirectiveParser().parse_directive('&identify')
             else:
-                Parser().parse_directive('&identify')
+                DirectiveParser().parse_directive('&identify')
                 plugins = glob.glob(core.Main.source_path_ + '/plugins/*.py')
                 plugins.sort()
                 other_plugins = ''
@@ -472,13 +464,13 @@ class Parser:
                     name = m.group(1)
                     if name != current_plugin:
                         other_plugins += name + '  '
-                info_message(f"Also available:  {other_plugins.strip()}")
+                core.Main.msg.info_message(f"Also available:  {other_plugins.strip()}")
 
         ####################
 
         elif cmd == 'var':
             if action is not None:
-                if not var_action(action, argtrim, options):
+                if not var_functions.var_action(action, argtrim, options):
                     self.unrecognized_action(cmd, action)
             if argtrim is not None and action is None:
                 m = re.search(r'^(.*)\s(-+.*)$', argtrim)
@@ -490,7 +482,7 @@ class Parser:
                 var_values = []
                 m = re.search(r'^[^\s]+\s+(.*)$', argtrim)
                 if m is not None:
-                    var_values = get_values(m.group(1))
+                    var_values = var_functions.get_values(m.group(1))
                 has_var_values = len(var_values) >= 1
                 should_set_var = True
                 should_show_var_only = True
@@ -502,46 +494,46 @@ class Parser:
                         skip = False
                         continue
                     if option in ['-A', '--append'] and has_var_values:
-                        push_var(var_key, var_values)
+                        var_functions.push_var(var_key, var_values)
                         should_set_var = False
                     elif option in ['-A', '--append'] and not has_var_values:
                         append = True
                     elif option in ['-D', '--duplicate']:
-                        dup_var(var_key, var_values)
+                        var_functions.dup_var(var_key, var_values)
                         should_set_var = False
                         should_show_var_only = False
                     elif option in ['-p', '--pop']:
-                        pop_var(var_key)
+                        var_functions.pop_var(var_key)
                     elif option in ['--until']:
                         if not append:
-                            del_var([var_key])
+                            var_functions.del_var([var_key])
                         should_set_var = False
                         should_defer_show = True
                         skip = True
                         core.Main.until_ = options[i+1]
                         core.Main.until_var_key_ = var_key
                     elif option in ['-x', '--delete']:
-                        del_var([var_key] + var_values)
+                        var_functions.del_var([var_key] + var_values)
                         should_set_var = False
                         should_show_var_only = False
                 if should_set_var and has_var_values:
-                    set_var(var_key, var_values)
+                    var_functions.set_var(var_key, var_values)
                 if should_show_var_only and not should_defer_show:
-                    info_message(show_var(var_key))
+                    core.Main.msg.info_message(var_functions.show_var(var_key))
                 elif not should_defer_show:
                     for key in [var_key] + var_values:
-                        info_message(show_var(key))
+                        core.Main.msg.info_message(var_functions.show_var(key))
             elif action is None:
-                info_message(show_all_vars())
+                core.Main.msg.info_message(var_functions.show_all_vars())
 
         ####################
 
         elif cmd == 'test' and core.Cli.skip_testing_:
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
         elif cmd == 'test':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             if argtrim is None:
                 core.Testing.testMessage(f"Usage: &{cmd} <parameters>")
             elif argtrim.startswith('start '):
@@ -595,11 +587,11 @@ class Parser:
 
         elif cmd == 'env':
             self.no_actions_recognized(cmd, action)
-            no_options_recognized(options)
+            core.Main.parser.no_options_recognized(options)
             if argtrim == 'push':
-                push_env()
+                core_functions.push_env()
             elif argtrim == 'pop':
-                pop_env()
+                core_functions.pop_env()
 
         ####################
 
@@ -610,7 +602,7 @@ class Parser:
                 if option in ['-fn', '--full-name']:
                     fullname = True
                 else:
-                    unrecognized_option(option)
+                    core.Main.parser.unrecognized_option(option)
             core.Testing.debug(argtrim, fullname)
 
         ####################
@@ -622,10 +614,10 @@ class Parser:
                 if option in ['-q']:
                     quiet = True
                 else:
-                    unrecognized_option(option)
+                    core.Main.parser.unrecognized_option(option)
             core.Main.infomsg_[-1] = True
             if not quiet:
-                info_message('Infomsg mode is on.')
+                core.Main.msg.info_message('Infomsg mode is on.')
         elif cmd == 'infomsg' and arg == 'off':
             self.no_actions_recognized(cmd, action)
             core.Main.infomsg_[-1] = False

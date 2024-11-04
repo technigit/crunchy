@@ -14,10 +14,7 @@
 ################################################################################
 
 import core
-from core_directives import is_directive
-from core_functions import pre_parse, map_elements
-from core_functions import print_line
-from core_functions import info_message
+from core_functions import pre_parse, map_elements, print_line
 
 def identify():
     return 'example'
@@ -56,7 +53,7 @@ def parse_my_directive(line):
 
     if cmd == 'example':
         if argtrim:
-            info_message(f"This is an example directive output acting on '{argtrim}'")
+            core.Main.msg.info_message(f"This is an example directive output acting on '{argtrim}'")
         else:
             p.invalid_usage('&example <text>')
 
@@ -90,10 +87,10 @@ def parse_option(option, parameter):
     if parameter is None:
         parameter = ''
     if option in ['-eo', '--example-option']:
-        info_message('This is an example option output with no parameters.')
+        core.Main.msg.info_message('This is an example option output with no parameters.')
         result = [True, False]
     elif option in ['-eop', '--example-option-parameter']:
-        info_message(f"This is an example option output with a parameter: {parameter}")
+        core.Main.msg.info_message(f"This is an example option output with a parameter: {parameter}")
         result = [True, True]
     return result
 
@@ -124,7 +121,7 @@ def plugin_main(line):
 ####################
 
 def parse_line(line):
-    if is_directive(line):
+    if core.Main.parser().is_directive(line):
         parse_my_directive(line)
     else:
         plugin_main(line)

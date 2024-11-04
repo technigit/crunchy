@@ -15,7 +15,7 @@
 
 import core
 import bridge
-from core_functions import rjustify
+import core_functions
 
 def reset():
     core.Testing.testing_ = [False]
@@ -62,7 +62,7 @@ def test_stop(verbose = False):
     else:
         failed = str(core.Testing.test_fail_[-1]) + ' failed :: '
     text_offset = 0 if total < 1000 else 2 # make room for big numbers
-    test_message(rjustify(tested, 18 + text_offset) + rjustify(passed, 24 + text_offset) + failed + testfile, True)
+    test_message(core_functions.rjustify(tested, 18 + text_offset) + core_functions.rjustify(passed, 24 + text_offset) + failed + testfile, True)
     core.Testing.test_filename_[-1] = ''
 
 def test_versions(ranges):

@@ -13,8 +13,7 @@
 # See the LICENSE file in the project root for more information.
 ################################################################################
 
-from core_directives import Parser, is_directive
-from core_functions import info_message
+import core
 
 def identify():
     return 'shell'
@@ -29,7 +28,7 @@ def reset():
     pass # placeholder
 
 def parse_line(line):
-    if is_directive(line):
-        Parser().parse_directive(line)
+    if core.Main.parser().is_directive(line):
+        core.Main.parser().parse_directive(line)
     else:
-        info_message(f"{identify()}: This plugin does not process data.")
+        core.Main.msg.info_message(f"{identify()}: This plugin does not process data.")

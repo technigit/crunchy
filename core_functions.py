@@ -25,7 +25,7 @@ from dateutil import parser
 
 import core
 import bridge
-from var_functions import process_until, push_or_set_var, show_var
+import var_functions
 
 ################################################################################
 # show utility information in interactive mode
@@ -258,7 +258,7 @@ def pre_parse(line):
 
     # &var.capture
     if core.Main.capture_mode_:
-        push_or_set_var(core.Main.capture_key_, [core.Main.elements_])
+        var_functions.push_or_set_var(core.Main.capture_key_, [core.Main.elements_])
         return None
 
     # current plugin not using headers: done, no mapping needed
@@ -368,12 +368,12 @@ def skip_line(line):
             core.Main.until_ = None
             keys = core.Main.until_var_key_.split(',')
             for key in keys:
-                info_message(show_var(key))
+                info_message(var_functions.show_var(key))
         return True
     if core.Main.goto_[-1]:
         return True
     if core.Main.until_:
-        process_until(line)
+        var_functions.process_until(line)
         return True
     return False
 

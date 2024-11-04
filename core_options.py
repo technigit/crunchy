@@ -17,10 +17,7 @@ import sys
 
 import core
 import bridge
-from core_functions import use_plugin
-from core_functions import print_line
-from core_functions import show_help
-from core_functions import error_message
+import core_functions
 
 ################################################################################
 # process command-line options
@@ -49,12 +46,12 @@ def parse_options(argv = sys.argv):
             elif option in ['-up', '--use-plugin']:
                 if i < len(argv) - 1:
                     plugin_name = argv[i+1]
-                    use_plugin(plugin_name)
+                    core_functions.use_plugin(plugin_name)
                     skip = True
                 else:
-                    error_message(f"Parameter expected: {option}")
-                    print_line()
-                    show_help('usage', True)
+                    core.Main.msg.error_message(f"Parameter expected: {option}")
+                    core_functions.print_line()
+                    core_functions.show_help('usage', True)
             elif option in ['-vv']:
                 core.Cli.verbose_verbose_ = True
             elif option in ['-h', '---help']:
@@ -62,7 +59,7 @@ def parse_options(argv = sys.argv):
                 if i < len(argv) - 1:
                     topic = argv[i+1]
                     skip = True
-                show_help(topic, True)
+                core_functions.show_help(topic, True)
             elif option in ['-st', '--skip-testing']:
                 core.Cli.skip_testing_ = True
             elif option in ['-tv', '--test-verbose']:
@@ -82,9 +79,9 @@ def parse_options(argv = sys.argv):
                 # result[1] = skip next word (option parameter)
                 result = bridge.Plugin.parse_option(option, parameter)
                 if not result[0]:
-                    error_message(f"Unknown option: {option}")
-                    print_line()
-                    show_help('usage', True)
+                    core.Main.msg.error_message(f"Unknown option: {option}")
+                    core_functions.print_line()
+                    core_functions.show_help('usage', True)
                 else:
                     skip = result[1]
         elif i > 0:
@@ -93,7 +90,7 @@ def parse_options(argv = sys.argv):
 
 def unrecognized_option(option):
     if option != '':
-        error_message(f"Unrecognized option: {option}")
+        core.Main.msg.error_message(f"Unrecognized option: {option}")
 
 def no_options_recognized(options):
     for option in options:

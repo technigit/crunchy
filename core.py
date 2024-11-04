@@ -67,13 +67,17 @@ class Main():
     terminal_width_ = shutil.get_terminal_size().columns
     version_ = ''
 
+    # construct messaging class
     class Messaging:
         info_message = core_functions.info_message
         error_message = core_functions.error_message
-
     msg = Messaging
-    parser = core_directives.Parser
+
+    # construct parser class from core_directives and core_options
+    parser = core_directives.DirectiveParser
     parser.no_options_recognized = core_options.no_options_recognized
+    parser.parse_options = core_options.parse_options
+    parser.unrecognized_option = core_options.unrecognized_option
 
 class Testing():
     testing_ = []

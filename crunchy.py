@@ -21,14 +21,13 @@ import traceback
 import readline # pylint: disable=unused-import
 
 import core
-from core_directives import parse_options
-from core_functions import check_interactivity, show_info, skip_line, error_message
-from var_functions import process_release
+import core_functions
+import var_functions
 
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.35'
+core.Main.version_ = 'v0.0.36'
 
 ################################################################################
 # send data to the plugin for processing
@@ -39,38 +38,38 @@ def process_data(cli_filenames): # pylint: disable=too-many-branches
     try:
         if core.Main.interactive_:
             line = input(core.Main.interactive_prompt_)
-            if not skip_line(line):
+            if not core_functions.skip_line(line):
                 bridge.Plugin.parse_line(line)
-            process_release()
+            var_functions.process_release()
             should_stop = False
         else:
             with fileinput.FileInput(files=(cli_filenames), mode='r') as lines:
                 for line in lines:
                     line = re.sub('\n', '', line)
-                    if not skip_line(line):
+                    if not core_functions.skip_line(line):
                         bridge.Plugin.parse_line(line)
-                    process_release()
+                    var_functions.process_release()
                     if not core.Main.running_[-1]:
                         break
     except EOFError:
         print()
         should_stop = True
     except FileNotFoundError as e:
-        error_message(f"Input file not found: {e.filename}")
+        core.Main.msg.error_message(f"Input file not found: {e.filename}")
     except IndexError:
-        error_message(f"Badly formed data: {line}")
+        core.Main.msg.error_message(f"Badly formed data: {line}")
         should_stop = False
         if core.Cli.verbose_verbose_:
             traceback.print_exc()
     except ValueError:
-        error_message(f"Invalid input: {line}")
+        core.Main.msg.error_message(f"Invalid input: {line}")
         should_stop = False
         if core.Cli.verbose_verbose_:
             traceback.print_exc()
     except KeyboardInterrupt:
-        error_message('Interrupted.')
+        core.Main.msg.error_message('Interrupted.')
     except: # pylint: disable=bare-except
-        error_message('Unexpected error.')
+        core.Main.msg.error_message('Unexpected error.')
         traceback.print_exc()
     finally:
         if core.Testing.testing_[-1]:
@@ -88,11 +87,11 @@ core.Testing.reset()
 bridge.use_plugin('shell')
 
 # process command-line options
-filenames = parse_options()
+filenames = core.Main.parser.parse_options()
 
 # show information when starting in interactive mode
-core.Main.interactive_ = check_interactivity(filenames)
-show_info()
+core.Main.interactive_ = core_functions.check_interactivity(filenames)
+core_functions.show_info()
 
 # main parsing loop
 while core.Main.running_[-1]:
@@ -102,4 +101,4 @@ while core.Main.running_[-1]:
 
 # gracefully handle uncompleted goto directives
 if core.Main.goto_[-1]:
-    error_message(f"EOF reached before tag '{core.Main.goto_[-1]}")
+    core.Main.msg.error_message(f"EOF reached before tag '{core.Main.goto_[-1]}")

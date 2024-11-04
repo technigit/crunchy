@@ -16,13 +16,7 @@
 import re
 
 import core
-from core_directives import is_directive
-from core_functions import ljustify, rjustify, currency
-from core_functions import pre_parse
-from core_functions import format_element_by_value
-from core_functions import print_line
-from core_functions import info_message, error_message
-from core_options import unrecognized_option
+from core_functions import format_element_by_value, ljustify, rjustify, currency, pre_parse, print_line
 
 def identify():
     return 'banking'
@@ -89,9 +83,9 @@ def parse_my_directive(line):
                 My.fulbal_[-1] = float(argtrim)
                 My.clrbal_[-1] = My.fulbal_[-1]
                 My.statvalues_[-1]['init'] = My.fulbal_[-1]
-                info_message(f"Initializing balance to {currency(My.fulbal_[-1])}.")
+                core.Main.msg.info_message(f"Initializing balance to {currency(My.fulbal_[-1])}.")
             else:
-                info_message('Overriding &init directive.')
+                core.Main.msg.info_message('Overriding &init directive.')
         else:
             p.invalid_usage('&init <float>')
 
@@ -104,16 +98,16 @@ def parse_my_directive(line):
             if len(parts) > 1:
                 if parts[0] == 'catfield':
                     My.catfield_[-1] = int(parts[1])
-                    info_message(f"Setting category field to {str(My.catfield_[-1])}.")
+                    core.Main.msg.info_message(f"Setting category field to {str(My.catfield_[-1])}.")
                 elif parts[0] == 'clrfield':
                     My.clrfield_[-1] = int(parts[1])
-                    info_message(f"Setting clear field to {str(My.clrfield_[-1])}.")
+                    core.Main.msg.info_message(f"Setting clear field to {str(My.clrfield_[-1])}.")
                 elif parts[0] == 'decfield':
                     My.decfield_[-1] = int(parts[1])
-                    info_message(f"Setting decrement field to {str(My.decfield_[-1])}.")
+                    core.Main.msg.info_message(f"Setting decrement field to {str(My.decfield_[-1])}.")
                 elif parts[0] == 'incfield':
                     My.incfield_[-1] = int(parts[1])
-                    info_message(f"Setting increment field to {str(My.incfield_[-1])}.")
+                    core.Main.msg.info_message(f"Setting increment field to {str(My.incfield_[-1])}.")
                 else:
                     show_usage = True
             else:
@@ -134,11 +128,11 @@ def parse_my_directive(line):
             elif option in ['-i', '--init']:
                 init = True
             else:
-                unrecognized_option(option)
+                core.Main.parser.unrecognized_option(option)
         if init:
             My.catvalues_ = [{}]
             My.statvalues_ = [{}]
-            info_message('Stats initialized.')
+            core.Main.msg.info_message('Stats initialized.')
         elif simple:
             if not argtrim:
                 simple_stats('All')
@@ -273,7 +267,7 @@ def more_stats(category):
 
 def check_cat_field():
     if My.catfield_[-1] is None:
-        error_message('Cannot run &stats when catfield is not set.')
+        core.Main.msg.error_message('Cannot run &stats when catfield is not set.')
         return False
     return True
 
@@ -315,14 +309,14 @@ def plugin_main(line):
         if payamt.strip() == '':
             payamt = 0.0
     else:
-        error_message('Decrement field is not set.')
+        core.Main.msg.error_message('Decrement field is not set.')
     if My.incfield_[-1] is not None:
         depamt = core.Main.elements_[My.incfield_[-1]]
         depamt = re.sub(r'^\d\.-', '', depamt)
         if depamt.strip() == '':
             depamt = 0.0
     else:
-        error_message('Increment field is not set.')
+        core.Main.msg.error_message('Increment field is not set.')
     try:
         # calculate running balance
         My.fulbal_[-1] -= float(payamt)
@@ -443,7 +437,7 @@ def plugin_main(line):
 ####################
 
 def parse_line(line):
-    if is_directive(line):
+    if core.Main.parser().is_directive(line):
         parse_my_directive(line)
     else:
         plugin_main(line)
