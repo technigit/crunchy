@@ -369,6 +369,7 @@ def skip_line(line):
             keys = core.Main.until_var_key_.split(',')
             for key in keys:
                 info_message(var_functions.show_var(key))
+            unfreeze_history()
         return True
     if core.Main.goto_[-1]:
         return True
@@ -378,13 +379,26 @@ def skip_line(line):
     return False
 
 ################################################################################
+# freeze/unfreeze up/down arrow history for focused processes
+################################################################################
+
+up_down_arrow_history = []
+
+def freeze_history():
+    for i in range(readline.get_current_history_length()):
+        up_down_arrow_history.append(readline.get_history_item(i + 1))
+
+def unfreeze_history():
+    readline.clear_history()
+    for item in up_down_arrow_history:
+        readline.add_history(item)
+
+################################################################################
 # text pager
 ################################################################################
 
 def page_text(text):
-    up_down_arrow_history = []
-    for i in range(readline.get_current_history_length()):
-        up_down_arrow_history.append(readline.get_history_item(i + 1))
+    freeze_history()
     terminal_width = shutil.get_terminal_size().columns
     terminal_height = shutil.get_terminal_size().lines
     prompt_height = 2
@@ -398,14 +412,12 @@ def page_text(text):
                 page_index += 1
         else:
             command = input('Help (Press Enter to continue or q to quit): ')
-            print('\033[F' + ' ' * terminal_width + '\r', end='')
+            print(core.ANSI.CURSOR_TO_FIRST_COLUMN + ' ' * terminal_width + '\r', end='')
             if command.lower() == 'q':
                 break
             page_index = 0
         print(textwrap.fill(line, terminal_width))
-    readline.clear_history()
-    for item in up_down_arrow_history:
-        readline.add_history(item)
+    unfreeze_history()
 
 ################################################################################
 # process help files

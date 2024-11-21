@@ -27,7 +27,7 @@ import var_functions
 # abstraction layer for plugins
 import bridge
 
-core.Main.version_ = 'v0.0.36'
+core.Main.version_ = 'v0.0.37'
 
 ################################################################################
 # send data to the plugin for processing
@@ -37,7 +37,10 @@ def process_data(cli_filenames): # pylint: disable=too-many-branches
     should_stop = True
     try:
         if core.Main.interactive_:
-            line = input(core.Main.interactive_prompt_)
+            prompt = core.Main.interactive_prompt_
+            if core.Main.goto_[-1] is not None or core.Main.until_ is not None:
+                prompt = core.Main.interactive_prompt_focused_
+            line = input(prompt)
             if not core_functions.skip_line(line):
                 bridge.Plugin.parse_line(line)
             var_functions.process_release()

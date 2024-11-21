@@ -13,6 +13,7 @@
 # See the LICENSE file in the project root for more information.
 ################################################################################
 
+import ast
 import re
 from datetime import datetime
 from dateutil import parser
@@ -21,8 +22,12 @@ import core
 import bridge
 
 # non-printable null characters for internal parsing
-SPACE_DELIM = '\x00'
-COMMA_DELIM = '\x01'
+SPACE_DELIM = '\x00' # \s
+COMMA_DELIM = '\x01' # ,
+DQUOTE_DELIM = '\x02' # "
+SQUOTE_DELIM = '\x03' # '
+LBRACKET_DELIM = '\x04' # [
+RBRACKET_DELIM = '\x05' # ]
 
 ################################################################################
 # function support for user-definable variables
@@ -32,27 +37,63 @@ def process_until(line):
     # slot values into variable(s) specified by key(s)
 
     keys = split_string(core.Main.until_var_key_)
-    values = split_string(line)
+    values = get_values(line)
     i = 0
+    padding = False
+    if values is None:
+        return
     while i < len(values):
         for key in keys:
             if i < len(values):
                 value = values[i]
-            else:
+            else: # more values than expected
                 value = 0
-            if value == '':
+                padding = True
+            if value == '': # two commas will cause this
                 value = 0
             push_or_set_var(key, [value])
             i += 1
+    if padding:
+        core.Main.msg.info_message('Padding added to match the expected number of variable keys.')
 
 ########################################
 
 def get_values(line):
-    # get a list of comma-delimited space-delimited values
+    # get an array of values from a comma-delimited or space-delimited string with possible quotes or brackets
 
+    # save original copy for error messages
+    original_line = line
+
+    # encode disruptive structural characters in quoted elements
     pattern = r'(["\'])(.*?)\1'
-    result = re.sub(pattern, lambda m: m.group(1) + m.group(2).replace(' ', SPACE_DELIM).replace(',', COMMA_DELIM) + m.group(1), line)
-    return result.split()
+    line = re.sub(pattern, lambda m: m.group(1) + m.group(2).replace(' ', SPACE_DELIM).replace(',', COMMA_DELIM).replace('"', DQUOTE_DELIM).replace("'", SQUOTE_DELIM).replace('[', LBRACKET_DELIM).replace(']', RBRACKET_DELIM) + m.group(1), line)
+
+    # add commas to satisfy ast parsing expectations
+    line = re.sub(r'\]\[', '],[', line)
+    line = re.sub(r',\s+', ',', line)
+    line = re.sub(r'\s+', ',', line)
+
+    # check for balanced quotes/brackets and return the parsed version
+    quote_balance = line.count("'") % 2 + line.count('"') % 2 # ensure that single quotes and double quotes are paired
+    bracket_balance = line.count('[') - line.count(']') # ensure that left and right brackets are equally balanced
+
+    # decode disruptive structural characters
+    pattern = r'([^\s\[\]\'\",]+)'
+    line = re.sub(pattern, lambda m: f"'{m.group(1)}'" if isinstance(type_by_value(m.group(1)), str) else m.group(1), line)
+    line = line.replace(SPACE_DELIM, ' ').replace(COMMA_DELIM, ',').replace(DQUOTE_DELIM, '"').replace(SQUOTE_DELIM, "'").replace(LBRACKET_DELIM, '[').replace(RBRACKET_DELIM, ']').replace('\'"', "'").replace('"\'', "'").replace('\'\'', "'")
+
+    if quote_balance + bracket_balance == 0:
+        try:
+            return ast.literal_eval(f"[{line}]")
+        except SyntaxError:
+            core.Main.msg.error_message(f"Syntax error: {original_line}")
+
+    # alert on unexpected results from unbalanced quotes/brackets
+    if quote_balance != 0:
+        core.Main.msg.error_message(f"Unbalanced quotes causing incorrect results: {original_line}")
+    if bracket_balance != 0:
+        core.Main.msg.error_message(f"Unbalanced brackets causing incorrect results: {original_line}")
+    return None
 
 ########################################
 
@@ -108,20 +149,24 @@ def get_var(var_key):
 ########################################
 
 def set_var(var_key, var_values):
-    # store values into a variable by key(s)
+    # store values into variable(s) by key(s)
 
     var_keys = split_string(var_key)
     if len(var_keys) == 1:
-        if len(var_values) == 1:
-            var_values = [type_by_value(value) for value in split_string(var_values[0])]
-        else:
-            var_values = [value.replace(',', '') if isinstance(value, str) else value for value in var_values]
         core.Main.variables_[-1][var_keys[0]] = [type_by_value(value) for value in var_values]
-    elif len(var_keys) == len(var_values):
-        for i, this_var_key in enumerate(var_keys):
-            core.Main.variables_[-1][this_var_key] = [type_by_value(value) for value in split_string(var_values[i])]
     else:
-        raise ValueError()
+        for key in var_keys:
+            core.Main.variables_[-1][key] = []
+        k = 0
+        for this_value in var_values:
+            if k >= len(var_keys):
+                k = 0
+            this_var = [type_by_value(value) for value in split_string(this_value)]
+            if isinstance(this_var[0], list):
+                core.Main.variables_[-1][var_keys[k]] += this_var[0] # append a list
+            else:
+                core.Main.variables_[-1][var_keys[k]] += this_var # append a non-list value
+            k += 1
 
 ########################################
 

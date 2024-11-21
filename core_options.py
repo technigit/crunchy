@@ -70,6 +70,8 @@ def parse_options(argv = sys.argv):
             elif option in ['-tfq', '--test-force-quiet']:
                 core.Cli.test_force_quiet_ = True
                 core.Main.parser().parse_directive('&test quiet')
+            elif option in ['-dpm0', '--debug-print-mode-off']: # undocumented, for testing purposes
+                core.Testing.debug_print_mode = False
             else:
                 if i < len(argv) - 1:
                     parameter = argv[i+1]

@@ -182,11 +182,16 @@ class DirectiveParser:
 
         if cmd == 'cd':
             self.no_actions_recognized(cmd, action)
-            core.Main.parser.no_options_recognized(options)
+            quiet = False
+            for option in options:
+                if option in ['-q', '--quiet']:
+                    quiet = True
+                else:
+                    core.Main.parser.unrecognized_option(option)
             core.Main.read_path_[-1] = argtrim
-            if core.Main.read_path_[-1]:
+            if core.Main.read_path_[-1] and not quiet:
                 core.Main.msg.info_message(f"Setting current working directory to '{core.Main.read_path_[-1]}'.")
-            else:
+            elif not quiet:
                 core.Main.msg.info_message('Resetting current working directory.')
 
         ####################
@@ -207,11 +212,16 @@ class DirectiveParser:
 
         elif cmd == 'goto':
             self.no_actions_recognized(cmd, action)
-            core.Main.parser.no_options_recognized(options)
+            quiet = False
+            for option in options:
+                if option in ['-q', '--quiet']:
+                    quiet = True
+                else:
+                    core.Main.parser.unrecognized_option(option)
             core.Main.goto_[-1] = argtrim
-            if argtrim:
+            if argtrim and not quiet:
                 core.Main.msg.info_message(f"Skipping to '{core.Main.goto_[-1]}'.")
-            else:
+            elif not quiet:
                 self.invalid_usage('&goto <label>')
 
         ####################
@@ -483,7 +493,10 @@ class DirectiveParser:
                 m = re.search(r'^[^\s]+\s+(.*)$', argtrim)
                 if m is not None:
                     var_values = var_functions.get_values(m.group(1))
-                has_var_values = len(var_values) >= 1
+                if var_values is not None:
+                    has_var_values = len(var_values) >= 1
+                else:
+                    has_var_values = False
                 should_set_var = True
                 should_show_var_only = True
                 should_defer_show = False
@@ -512,6 +525,7 @@ class DirectiveParser:
                         skip = True
                         core.Main.until_ = options[i+1]
                         core.Main.until_var_key_ = var_key
+                        core.Main.parser.freeze_history()
                     elif option in ['-x', '--delete']:
                         var_functions.del_var([var_key] + var_values)
                         should_set_var = False

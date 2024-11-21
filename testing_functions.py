@@ -25,6 +25,7 @@ def reset():
     core.Testing.test_verbose_ = [False]
     core.Testing.test_pass_ = [0]
     core.Testing.test_fail_ = [0]
+    core.Testing.debug_print_mode = True
 
 def test_message(message, verbose = False):
     if core.Testing.test_verbose_[-1] or verbose:
@@ -190,3 +191,7 @@ def debug(argv, fullname = False):
     list_vars_(core.Cli, filters, fullname)
     list_vars_(core.Testing, filters, fullname)
     list_vars_(bridge.Plugin.my, filters, fullname, 'plugin')
+
+def debug_print(message = ''):
+    if core.Testing.debug_print_mode:
+        print(message)

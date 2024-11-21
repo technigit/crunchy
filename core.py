@@ -61,6 +61,7 @@ class Main():
     header_mode_ = None
     interactive_ = False
     interactive_prompt_ = '> '
+    interactive_prompt_focused_ = '>> '
     margin_ = ' '
     max_read_depth_ = 5
     source_path_ =  str(Path(__file__).resolve().parent)
@@ -73,8 +74,10 @@ class Main():
         error_message = core_functions.error_message
     msg = Messaging
 
-    # construct parser class from core_directives and core_options
+    # construct parser class from core_directives, core_functions, and core_options
     parser = core_directives.DirectiveParser
+    parser.freeze_history = core_functions.freeze_history
+    parser.unfreeze_history = core_functions.unfreeze_history
     parser.no_options_recognized = core_options.no_options_recognized
     parser.parse_options = core_options.parse_options
     parser.unrecognized_option = core_options.unrecognized_option
@@ -92,6 +95,8 @@ class Testing():
     testStop = testing_functions.test_stop
     testVersions = testing_functions.test_versions
     debug = testing_functions.debug
+    debug_print = testing_functions.debug_print
+    debug_print_mode = None
 
 class Cli():
     ignore_stop_ = None
@@ -154,3 +159,5 @@ class ANSI():
     FG_RED = set_display_attribute(31)
     FG_YELLOW = set_display_attribute(33)
     FG_GREEN = set_display_attribute(32)
+
+    CURSOR_TO_FIRST_COLUMN = '\033[F'
