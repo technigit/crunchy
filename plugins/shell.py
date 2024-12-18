@@ -31,4 +31,4 @@ def parse_line(line):
     if core.Main.parser().is_directive(line):
         core.Main.parser().parse_directive(line)
     else:
-        core.Main.msg.info_message(f"{identify()}: This plugin does not process data.")
+        core.Main.msg.info_message(f"{identify()}: This plugin does not process data, except via directives.")

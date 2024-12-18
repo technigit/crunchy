@@ -15,8 +15,8 @@
 
 import ast
 import re
+import statistics
 from datetime import datetime
-from dateutil import parser
 
 import core
 import bridge
@@ -33,11 +33,49 @@ RBRACKET_DELIM = '\x05' # ]
 # function support for user-definable variables
 ################################################################################
 
+def parse_references(line):
+    # find variable references and substitute values for them
+
+    pattern = r'{([a-zA-Z0-9:]+)}'
+    line = re.sub(pattern, lambda m: parse_reference(m.group(1)), line)
+    return line
+
+def parse_reference(ref):
+    # look up a single variable reference and return a value
+
+    if ':' in ref:
+        var, function = ref.split(':')
+    else:
+        var = ref
+        function = None
+    val = get_var(var)
+    numeric_val = [v if isinstance(v, (int, float)) else 0 for v in val]
+    result = val
+    if function == 'average':
+        result = core.Main.float_format_.format(statistics.mean(numeric_val))
+    elif function == 'count':
+        result = len(val)
+    elif function == 'max':
+        result = max(numeric_val)
+    elif function == 'min':
+        result = min(numeric_val)
+    elif function == 'reverse':
+        val.reverse()
+        result = val
+    elif function == 'sort':
+        val.sort()
+        result = val
+    elif function == 'stddev':
+        result = core.Main.float_format_.format(statistics.stdev(numeric_val))
+    if isinstance(result, list) and len(result) == 1:
+        result = result[0]
+    return str(result)
+
 def process_until(line):
     # slot values into variable(s) specified by key(s)
 
     keys = split_string(core.Main.until_var_key_)
-    values = get_values(line)
+    values = get_values(line.strip())
     i = 0
     padding = False
     if values is None:
@@ -53,7 +91,7 @@ def process_until(line):
                 value = 0
             push_or_set_var(key, [value])
             i += 1
-    if padding:
+    if padding and not core.Main.until_quiet_:
         core.Main.msg.info_message('Padding added to match the expected number of variable keys.')
 
 ########################################
@@ -82,6 +120,8 @@ def get_values(line):
     line = re.sub(pattern, lambda m: f"'{m.group(1)}'" if isinstance(type_by_value(m.group(1)), str) else m.group(1), line)
     line = line.replace(SPACE_DELIM, ' ').replace(COMMA_DELIM, ',').replace(DQUOTE_DELIM, '"').replace(SQUOTE_DELIM, "'").replace(LBRACKET_DELIM, '[').replace(RBRACKET_DELIM, ']').replace('\'"', "'").replace('"\'', "'").replace('\'\'', "'")
 
+    if re.match(r'^@.*$', line) or re.match(r'^date:.*', line):
+        line = f'"{line}"' # encapsulate date strings
     if quote_balance + bracket_balance == 0:
         try:
             return ast.literal_eval(f"[{line}]")
@@ -110,7 +150,7 @@ def type_by_value(var_value):
     if str(var_value).startswith('date:') or str(var_value).startswith('@'):
         try:
             datestr = var_value.replace('date:', '').replace('@', '')
-            return parser.parse(datestr)
+            return core.Main.DateUtil.parse(datestr)
         except ValueError:
             pass
     if isinstance(var_value, datetime):

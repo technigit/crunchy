@@ -240,7 +240,16 @@ class DirectiveParser:
                     else:
                         core.Main.parser.unrecognized_option(option)
                 if print_header:
-                    bridge.Plugin.parse_line('  '.join(core.Main.headers_[-1]))
+                    headers = '  '.join(core.Main.headers_[-1])
+                    if not bridge.Plugin.identify() in core.Main.does_not_process_data:
+                        # this plugin processes data
+                        bridge.Plugin.parse_line(headers)
+                    else:
+                        # this plugin does not process data
+                        # plugins/shell.py is an example
+                        out = core_functions.pre_parse(headers)
+                        if core.Main.output_[-1] and out is not None:
+                            core_functions.print_line(out)
             else:
                 core.Main.msg.error_message('No header information found.')
 
@@ -479,11 +488,12 @@ class DirectiveParser:
         ####################
 
         elif cmd == 'var':
+            core.Main.until_quiet_ = False
             if action is not None:
                 if not var_functions.var_action(action, argtrim, options):
                     self.unrecognized_action(cmd, action)
             if argtrim is not None and action is None:
-                m = re.search(r'^(.*)\s(-+.*)$', argtrim)
+                m = re.search(r'^(.*)\s(-+[-\sa-zA-Z0-9]*)$', argtrim)
                 if m is not None:
                     options += m.group(2).split()
                     argtrim = m.group(1)
@@ -517,6 +527,8 @@ class DirectiveParser:
                         should_show_var_only = False
                     elif option in ['-p', '--pop']:
                         var_functions.pop_var(var_key)
+                    elif option in ['-q', '--quiet']:
+                        core.Main.until_quiet_ = True
                     elif option in ['--until']:
                         if not append:
                             var_functions.del_var([var_key])

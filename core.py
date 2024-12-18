@@ -15,6 +15,12 @@
 
 import shutil
 from pathlib import Path
+from datetime import datetime
+try:
+    from dateutil import parser
+    DATEUTIL_IMPORTED = True # dateutil module successfully imported
+except ImportError:
+    DATEUTIL_IMPORTED = False # missing dateutil module
 
 import core_directives
 import core_functions
@@ -52,10 +58,12 @@ class Main():
     timer_label_ = []
     timer_ts_ = []
     until_ = None
+    until_quiet_ = None
     until_var_key_ = None
     variables_ = [{}]
 
     currency_format_ = '${:,.2f}'
+    float_format_ = '{:,.2f}'
     percentage_format_ = '{:.2f}%'
     datetime_format_ = '%Y-%m-%d'
     header_mode_ = None
@@ -67,6 +75,20 @@ class Main():
     source_path_ =  str(Path(__file__).resolve().parent)
     terminal_width_ = shutil.get_terminal_size().columns
     version_ = ''
+    does_not_process_data = ['shell']
+
+    # dateutil wrapper to support environments missing this module
+    class DateUtil:
+        warning_message_sent = False
+
+        @classmethod
+        def parse(cls, datestr):
+            if DATEUTIL_IMPORTED:
+                return parser.parse(datestr, fuzzy=True)
+            if not cls.warning_message_sent:
+                core_functions.error_message('Could not import dateutil module.  Date functionality will be limited.')
+                cls.warning_message_sent = True
+            return datetime.strptime(datestr, Main.datetime_format_)
 
     # construct messaging class
     class Messaging:
@@ -130,6 +152,7 @@ def reset(full_reset = True):
         Main.timer_label_ = set_list_value(Main.timer_label_, None)
         Main.timer_ts_ = set_list_value(Main.timer_ts_, None)
         Main.until_ = None
+        Main.until_quiet_ = None
         Main.until_var_key_ = None
         Main.variables_ = [{}]
 

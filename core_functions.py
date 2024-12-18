@@ -21,7 +21,6 @@ import textwrap
 import time
 import traceback
 from os.path import dirname, exists, realpath
-from dateutil import parser
 
 import core
 import bridge
@@ -61,7 +60,7 @@ def format_element_by_value(index, element):
     formats = core.Main.formats_[-1][index]
     if isinstance(element, str) and '@' in formats:
         try:
-            element = parser.parse(element).strftime(core.Main.datetime_format_)
+            element = core.Main.DateUtil.parse(element).strftime(core.Main.datetime_format_)
         except ValueError:
             pass
     if is_float(element) and not is_integer(element):
@@ -367,8 +366,9 @@ def skip_line(line):
         elif m.group(1) == core.Main.until_:
             core.Main.until_ = None
             keys = core.Main.until_var_key_.split(',')
-            for key in keys:
-                info_message(var_functions.show_var(key))
+            if not core.Main.until_quiet_:
+                for key in keys:
+                    info_message(var_functions.show_var(key))
             unfreeze_history()
         return True
     if core.Main.goto_[-1]:
